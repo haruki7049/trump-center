@@ -19,6 +19,7 @@ type TitleScene struct {
 	fontFace   *text.GoXFace
 }
 
+// Creates the new TitleScene value with initial member variables
 func NewTitleScene() *TitleScene {
 	return &TitleScene{
 		fontFace: text.NewGoXFace(bitmapfont.Face),
