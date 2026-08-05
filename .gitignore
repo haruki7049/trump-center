@@ -15,7 +15,8 @@ result-*
 *.so
 *.dylib
 *.wasm
-iai
+trump-center
+!trump-center/
 
 # Test binary, built with `go test -c`
 *.test
