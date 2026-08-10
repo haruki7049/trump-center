@@ -58,6 +58,7 @@
             pkgs.nil # Nix LSP
             pkgs.gopls # Golang LSP
             pkgs.gomod2nix # gomod2nix for creating Hashes (./gomod2nix.toml)
+            pkgs.nushell # For cross-platform scripting
           ];
 
           iai = pkgs.buildGoApplication {
