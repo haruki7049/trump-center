@@ -44,6 +44,7 @@ func loadFont(filename string) (*text.GoTextFace, error) {
 	fontFace := text.GoTextFace{Source: src, Size: 30}
 	return &fontFace, nil
 }
+
 func (s *TitleScene) Update() (scene.Scene, error) {
 	return nil, nil
 }
