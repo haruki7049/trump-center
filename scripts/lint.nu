@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
 
 def main [] {
-  rm --recursive ./target
+  go vet ./... # go-vet
 }

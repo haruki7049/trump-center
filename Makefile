@@ -1,10 +1,22 @@
-.PHONY: build clean run
+.PHONY: build clean run test fmt lint update
 
 build:
-	nu ./scripts/build.nu
+	@./scripts/build.nu
 
 clean:
-	nu ./scripts/clean.nu
+	@./scripts/clean.nu
 
 run: build
-	nu ./scripts/run.nu
+	./target/bin/trump-center
+
+test:
+	@./scripts/test.nu
+
+fmt:
+	@./scripts/fmt.nu
+
+lint:
+	@./scripts/lint.nu
+
+update:
+	@./scripts/update.nu
