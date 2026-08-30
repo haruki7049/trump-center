@@ -14,7 +14,6 @@ const WINDOW_TITLE = "Trump Center"
 func Run() error {
 	ebiten.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 	ebiten.SetWindowTitle(WINDOW_TITLE)
-	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 
 	game := NewGame()
 	if err := ebiten.RunGame(game); err != nil {
