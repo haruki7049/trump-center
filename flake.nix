@@ -61,8 +61,8 @@
             pkgs.nushell # For cross-platform scripting
           ];
 
-          iai = pkgs.buildGoApplication {
-            name = "iai";
+          trump-center = pkgs.buildGoApplication {
+            name = "trump-center";
             src = lib.cleanSource ./.;
             modules = ./gomod2nix.toml;
             inherit buildInputs nativeBuildInputs;
@@ -94,12 +94,12 @@
           };
 
           packages = {
-            inherit iai;
-            default = iai;
+            inherit trump-center;
+            default = trump-center;
           };
 
           checks = {
-            inherit iai;
+            inherit trump-center;
           };
 
           devShells.default = pkgs.mkShell {
