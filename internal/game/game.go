@@ -8,10 +8,6 @@ import (
 	"github.com/haruki7049/trump-center/internal/scene"
 )
 
-const WINDOW_WIDTH = 1280
-const WINDOW_HEIGHT = 720
-const WINDOW_TITLE = "Trump Center"
-
 // Run our trump game
 func Run() {
 	ebiten.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -43,15 +39,21 @@ func NewGame() (*Game, error) {
 	return result, nil
 }
 
-type NullPointerOnSceneError struct{}
+func (g *Game) newGameScene() error {
+	scene, err := title.NewTitleScene()
+	if err != nil {
+		return err
+	}
 
-func (e NullPointerOnSceneError) Error() string {
-	return "g.scene var is null"
+	g.scene = scene
+	return nil
 }
 
 func (g *Game) Update() error {
 	if g.scene == nil {
-		return NullPointerOnSceneError{}
+		if err := g.newGameScene(); err != nil {
+			return err
+		}
 	}
 
 	next, err := g.scene.Update()

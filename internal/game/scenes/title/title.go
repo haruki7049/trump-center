@@ -19,13 +19,22 @@ type TitleScene struct {
 
 // Creates the new TitleScene value with initial member variables
 func NewTitleScene() (*TitleScene, error) {
-	fontFace, err := loadFont("fonts/DotGothic16/DotGothic16-Regular.ttf")
-	if err != nil {
+	var ts TitleScene
+	if err := ts.newTitleSceneFontFace(); err != nil {
 		return nil, err
 	}
 
-	result := &TitleScene{fontFace: fontFace}
-	return result, nil
+	return &ts, nil
+}
+
+func (ts *TitleScene) newTitleSceneFontFace() error {
+	fontFace, err := loadFont("fonts/DotGothic16/DotGothic16-Regular.ttf")
+	if err != nil {
+		return err
+	}
+
+	ts.fontFace = fontFace
+	return nil
 }
 
 func loadFont(filename string) (*text.GoTextFace, error) {
