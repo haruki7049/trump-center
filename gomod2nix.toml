@@ -17,10 +17,6 @@ schema = 3
     version = 'v0.3.0'
     hash = 'sha256-dCjYWtlBDO2QHPBbGo5arbwkxMkYUYJddRU+6VARaeI='
 
-  [mod.'github.com/hajimehoshi/bitmapfont/v4']
-    version = 'v4.1.0'
-    hash = 'sha256-EUPi8Uenhb+tRLZrQPox6g2udTe3IGU4Hq2TBYl4K4M='
-
   [mod.'github.com/hajimehoshi/ebiten/v2']
     version = 'v2.9.9'
     hash = 'sha256-3cc5DzNE9hq561rVeS25FcV7cZJ/d33nkzwX5Cpc71U='
@@ -28,10 +24,6 @@ schema = 3
   [mod.'github.com/jezek/xgb']
     version = 'v1.1.1'
     hash = 'sha256-LjbHWx2dzeVUOf3+VYpMZk+mXkxjwRR+v0oH3ZfPEDY='
-
-  [mod.'github.com/pierrec/lz4/v4']
-    version = 'v4.1.22'
-    hash = 'sha256-mxO2jXM6O2yzZjkJeck+C8ncLZs/5EGoMQU1yQh/row='
 
   [mod.'github.com/rivo/uniseg']
     version = 'v0.4.7'
