@@ -1,6 +1,8 @@
 package game
 
 import (
+	"log"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/haruki7049/trump-center/internal/scene"
 	"github.com/haruki7049/trump-center/internal/scene/title"
@@ -11,16 +13,18 @@ const WINDOW_HEIGHT = 720
 const WINDOW_TITLE = "Trump Center"
 
 // Run our trump game
-func Run() error {
+func Run() {
 	ebiten.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 	ebiten.SetWindowTitle(WINDOW_TITLE)
 
-	game := NewGame()
-	if err := ebiten.RunGame(game); err != nil {
-		return err
+	game, err := NewGame()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	return nil
+	if err := ebiten.RunGame(game); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Game is the root ebiten.Game implementation. It only owns the currently
@@ -29,10 +33,14 @@ type Game struct {
 	scene scene.Scene
 }
 
-func NewGame() *Game {
-	return &Game{
-		scene: title.NewTitleScene(),
+func NewGame() (*Game, error) {
+	scene, err := title.NewTitleScene()
+	if err != nil {
+		return nil, err
 	}
+
+	result := &Game{scene: scene}
+	return result, nil
 }
 
 type NullPointerOnSceneError struct{}

@@ -1,38 +1,55 @@
 package title
 
 import (
-	"github.com/hajimehoshi/bitmapfont/v4"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/haruki7049/trump-center/assets"
 	"github.com/haruki7049/trump-center/internal/scene"
 	"github.com/haruki7049/trump-center/internal/ui"
 )
 
 const titleMessage = "Trump Center"
-const titleMessageSizeX = 7.5
-const titleMessageSizeY = 7.5
 const titleMessageTranslationX = 0
 const titleMessageTranslationY = 0
 
 type TitleScene struct {
 	menuButton *ui.Button
-	fontFace   *text.GoXFace
+	fontFace   *text.GoTextFace
 }
 
 // Creates the new TitleScene value with initial member variables
-func NewTitleScene() *TitleScene {
-	return &TitleScene{
-		fontFace: text.NewGoXFace(bitmapfont.Face),
+func NewTitleScene() (*TitleScene, error) {
+	fontFace, err := loadFont("fonts/DotGothic16/DotGothic16-Regular.ttf")
+	if err != nil {
+		return nil, err
 	}
+
+	result := &TitleScene{fontFace: fontFace}
+	return result, nil
 }
 
+func loadFont(filename string) (*text.GoTextFace, error) {
+	// Read ttf file
+	f, err := assets.Assets.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	src, err := text.NewGoTextFaceSource(f)
+	if err != nil {
+		return nil, err
+	}
+
+	fontFace := text.GoTextFace{Source: src, Size: 30}
+	return &fontFace, nil
+}
 func (s *TitleScene) Update() (scene.Scene, error) {
 	return nil, nil
 }
 
 func (s *TitleScene) Draw(screen *ebiten.Image) {
 	titleMessageOp := &text.DrawOptions{}
-	titleMessageOp.GeoM.Scale(titleMessageSizeX, titleMessageSizeY)
 	titleMessageOp.GeoM.Translate(titleMessageTranslationX, titleMessageTranslationY)
 	titleMessageOp.LineSpacing = s.lineSpacing()
 	text.Draw(screen, titleMessage, s.fontFace, titleMessageOp)
