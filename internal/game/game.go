@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/haruki7049/trump-center/internal/game/scenes/title"
 	"github.com/haruki7049/trump-center/internal/scene"
-	"github.com/haruki7049/trump-center/internal/scene/title"
 )
 
 const WINDOW_WIDTH = 1280
