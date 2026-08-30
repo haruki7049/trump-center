@@ -13,6 +13,14 @@ schema = 3
     version = 'v0.9.0'
     hash = 'sha256-jSlhGjhuYf15zHy7shSKR1rQN1sRyH5zXAzWqy+huHY='
 
+  [mod.'github.com/ebitenui/ebitenui']
+    version = 'v0.7.3'
+    hash = 'sha256-Gq8Igjos/KSCE+Gl9wF2kHhMx7f1YAD5dTgqRhLAnlQ='
+
+  [mod.'github.com/frustra/bbcode']
+    version = 'v0.0.0-20201127003707-6ef347fbe1c8'
+    hash = 'sha256-6nFSZTYbx1Qtd8NmUZ3pFjYtoxS02vqUXFL/BeCFs+w='
+
   [mod.'github.com/go-text/typesetting']
     version = 'v0.3.0'
     hash = 'sha256-dCjYWtlBDO2QHPBbGo5arbwkxMkYUYJddRU+6VARaeI='
@@ -28,6 +36,10 @@ schema = 3
   [mod.'github.com/rivo/uniseg']
     version = 'v0.4.7'
     hash = 'sha256-rDcdNYH6ZD8KouyyiZCUEy8JrjOQoAkxHBhugrfHjFo='
+
+  [mod.'golang.org/x/exp']
+    version = 'v0.0.0-20250305212735-054e65f0b394'
+    hash = 'sha256-Vgt/CNx/xJYxiKKu0PI7ZSiL/SOfXI4di3Mcyge3aw4='
 
   [mod.'golang.org/x/image']
     version = 'v0.31.0'
