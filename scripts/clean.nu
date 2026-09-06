@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
 
 def main [] {
-  rm --recursive ./target
+  rm --force --recursive ./target
 }
