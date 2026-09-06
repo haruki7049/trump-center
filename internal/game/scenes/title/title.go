@@ -74,10 +74,3 @@ func (s *TitleScene) Update() (scene.Scene, error) {
 func (s *TitleScene) Draw(screen *ebiten.Image) {
 	s.ui.Draw(screen)
 }
-
-// lineSpacing returns the standard line spacing for fontFace, used by
-// every scene when drawing text.
-func (s *TitleScene) lineSpacing() float64 {
-	m := s.fontFace.Metrics()
-	return m.HLineGap + m.HAscent + m.HDescent
-}
