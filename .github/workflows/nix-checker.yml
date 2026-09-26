@@ -1,0 +1,27 @@
+name: nix-checker
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs treefmt (checks.treefmt) and builds the gomod2nix package (checks.trump-center),
+  # so a stale gomod2nix.toml or unformatted file fails here.
+  run-nix-check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+      - name: Run nix flake check
+        run: nix flake check --all-systems
+      - name: Evaluate devShell
+        run: nix develop --command true
