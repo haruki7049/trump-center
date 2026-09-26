@@ -39,7 +39,7 @@
         }:
         let
           overlays = [ inputs.gomod2nix.overlays.default ];
-          buildInputs = lib.optionals pkgs.stdenv.isLinux [
+          buildInputs = lib.optionals pkgs.stdenv.platform.isLinux [
             # Build-time dependencies
             pkgs.libx11
             pkgs.libxrandr
