@@ -66,6 +66,11 @@
             src = lib.cleanSource ./.;
             modules = ./gomod2nix.toml;
             inherit buildInputs nativeBuildInputs;
+
+            # Ebitengine needs a display (X11 on Linux, AppKit on Darwin) at test
+            # time, which the Nix build sandbox lacks. Go tests run in the Go CI
+            # workflow instead.
+            doCheck = false;
           };
         in
         {
