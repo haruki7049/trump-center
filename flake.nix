@@ -67,9 +67,10 @@
             modules = ./gomod2nix.toml;
             inherit buildInputs nativeBuildInputs;
 
-            # Ebitengine initializes AppKit on import, which crashes inside the
-            # Darwin build sandbox. Go tests on macOS run in the Go CI workflow instead.
-            doCheck = !pkgs.stdenv.hostPlatform.isDarwin;
+            # Ebitengine needs a display (X11 on Linux, AppKit on Darwin) at test
+            # time, which the Nix build sandbox lacks. Go tests run in the Go CI
+            # workflow instead.
+            doCheck = false;
           };
         in
         {
