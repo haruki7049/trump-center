@@ -1,4 +1,4 @@
-.PHONY: build clean run test fmt lint update
+.PHONY: build clean run test coverage fmt lint update
 
 build:
 	@nu ./scripts/build.nu
@@ -11,6 +11,9 @@ run: build
 
 test:
 	@nu ./scripts/test.nu
+
+coverage:
+	@nu ./scripts/coverage.nu
 
 fmt:
 	@nu ./scripts/fmt.nu
