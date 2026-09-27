@@ -22,7 +22,7 @@ ______________________________________________________________________
   - `assets/`: Embedded game assets (`assets.go`): card images under `assets/cards/` and the DotGothic16 font (OFL) under `assets/fonts/`.
   - `scripts/*.nu`: Nushell scripts invoked by the `Makefile` (`build`, `clean`, `test`, `fmt`, `lint`, `update`). They are written in Nushell for cross-platform (including Windows) support.
   - `.github/workflows/`: CI. `go.yml` runs `go build`, `go vet`, and `go test` on Linux (under `xvfb-run`), macOS, and Windows. `nix-checker.yml` runs `nix flake check --all-systems` (treefmt + `gomod2nix` package build without tests) and evaluates the devShell on Linux and macOS.
-  - `Makefile`: Entry points: `make build` (outputs to `target/bin/`), `make run`, `make test`, `make fmt`, `make lint`, `make clean`, `make update`.
+  - `Makefile`: Entry points: `make build` (outputs to `target/bin/`), `make run`, `make test`, `make coverage` (outputs to `target/coverage/`), `make fmt`, `make lint`, `make clean`, `make update`.
 
 ______________________________________________________________________
 

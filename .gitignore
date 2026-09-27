@@ -24,6 +24,7 @@ trump-center
 # Code coverage profiles and other test artifacts
 *.out
 coverage.*
+!/scripts/coverage.nu
 *.coverprofile
 profile.cov
 
