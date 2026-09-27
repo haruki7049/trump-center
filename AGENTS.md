@@ -8,6 +8,9 @@ ______________________________________________________________________
 
 `trump-center` is a playing-card (trump) game written in Go on top of [Ebitengine](https://ebitengine.org/) (`github.com/hajimehoshi/ebiten/v2`), with `github.com/ebitenui/ebitenui` as a UI dependency.
 
+- **Project Direction** (see [#5](https://github.com/haruki7049/trump-center/issues/5)): A collection of playing-card games in one app, selected from a menu and played with a standard 52-card deck plus jokers. When a change forces a choice, follow the priorities below.
+- **Play Mode Priority**: Versus CPU first, then local multiplayer, then online multiplayer (long-term goal). Modes that are easier to test automatically come first.
+- **Target Platform Priority**: Desktop first (Linux, then macOS, then Windows), then Web (WebAssembly), then mobile (iOS and Android). Do not break a higher-priority platform to support a lower-priority one.
 - **Development Environment**: Managed with Nix (`flake.nix`, with `default.nix` / `shell.nix` via `flake-compat`), `direnv` (`.envrc`), and `treefmt-nix` for formatting Nix, Go, GitHub Actions, Markdown, and shell scripts. `go`, `gopls`, `gomod2nix`, `nushell`, and `treefmt` are available on `PATH` inside `nix develop` (or via direnv). On Linux, the devShell also provides the X11 / ALSA / libGL libraries Ebitengine needs.
 - **Target Language Version**: Go `1.26.x` (`go` directive in `go.mod`), provided by `pkgs.go` in `flake.nix`.
 - **Nix Packaging**: The package is built with `gomod2nix` (`pkgs.buildGoApplication`). `gomod2nix.toml` holds the module hashes and **must** be regenerated whenever `go.mod` / `go.sum` change.
