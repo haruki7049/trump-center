@@ -2,7 +2,6 @@ package title
 
 import (
 	"image/color"
-	"log"
 
 	"github.com/ebitenui/ebitenui"
 	eimage "github.com/ebitenui/ebitenui/image"
@@ -10,12 +9,14 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/haruki7049/trump-center/assets"
+	"github.com/haruki7049/trump-center/internal/game/scenes/solitaire"
 	"github.com/haruki7049/trump-center/internal/scene"
 )
 
 type TitleScene struct {
-	fontFace text.Face
-	ui       *ebitenui.UI
+	fontFace       text.Face
+	ui             *ebitenui.UI
+	startRequested bool
 }
 
 // Creates the new TitleScene value with initial member variables
@@ -51,7 +52,7 @@ func (ts *TitleScene) newTitleSceneUi() {
 		widget.ButtonOpts.Text("Start", &ts.fontFace, &widget.ButtonTextColor{Idle: color.White}),
 		widget.ButtonOpts.TextPadding(&widget.Insets{Left: 16, Right: 16, Top: 8, Bottom: 8}),
 		widget.ButtonOpts.ClickedHandler(func(_ *widget.ButtonClickedEventArgs) {
-			log.Println("start button clicked")
+			ts.startRequested = true
 		}),
 	)
 	rootContainer.AddChild(startButton)
@@ -88,6 +89,11 @@ func loadFont(filename string) (*text.GoTextFace, error) {
 
 func (s *TitleScene) Update() (scene.Scene, error) {
 	s.ui.Update()
+
+	if s.startRequested {
+		return solitaire.NewSolitaireScene()
+	}
+
 	return nil, nil
 }
 
