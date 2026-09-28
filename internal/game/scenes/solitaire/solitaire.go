@@ -33,7 +33,7 @@ const (
 	// stockOriginY leaves labelOffsetY of headroom above the first row for
 	// its area labels (see drawLabels).
 	stockOriginX = 16
-	stockOriginY = 36
+	stockOriginY = 60
 	wasteOriginX = stockOriginX + cardWidth + 16
 	wasteOriginY = stockOriginY
 
@@ -45,7 +45,7 @@ const (
 	tableauOriginX = 16
 	// tableauOriginY leaves a bit more room than the bare minimum below
 	// the first row, so the "Tableau" label also fits above it.
-	tableauOriginY = stockOriginY + cardHeight + 32
+	tableauOriginY = stockOriginY + cardHeight + 60
 	tableauGapX    = cardWidth + 16
 	faceUpOffsetY  = 24
 
@@ -55,8 +55,8 @@ const (
 
 	// labelFontSize and labelOffsetY size and position the small area
 	// labels drawn above the stock, waste, foundation, and tableau.
-	labelFontSize = 14
-	labelOffsetY  = 20
+	labelFontSize = 28
+	labelOffsetY  = 40
 
 	stockLabel      = "Stock"
 	wasteLabel      = "Waste"
