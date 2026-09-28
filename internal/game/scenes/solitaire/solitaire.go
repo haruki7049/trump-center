@@ -34,8 +34,15 @@ const (
 	// its area labels (see drawLabels).
 	stockOriginX = 16
 	stockOriginY = 60
-	wasteOriginX = stockOriginX + cardWidth + 16
-	wasteOriginY = stockOriginY
+	// stockMaxLayers/stockLayerOffsetX/Y draw a few back-of-card images
+	// peeking out from behind the front card to suggest a stack with some
+	// thickness, instead of a single flat card. The front (clickable) card
+	// is always drawn last, at (stockOriginX, stockOriginY) exactly, so
+	// stockPile's hit-test bounds don't need to change to accommodate this.
+	stockMaxLayers   = 4
+	stockLayerOffset = 3
+	wasteOriginX     = stockOriginX + cardWidth + 16
+	wasteOriginY     = stockOriginY
 	// wasteFanCount/wasteFanOffsetX fan the most recent waste cards out
 	// horizontally instead of showing only a single flat card, so the
 	// player can see a little of their recent draw history. Only the
@@ -341,9 +348,20 @@ func (s *SolitaireScene) drawLabels(screen *ebiten.Image) {
 // from the current board state, so the (Passive View) component tree
 // reflects the latest game state before it is drawn.
 func (s *SolitaireScene) syncComponents() {
+	// Draw a few back-of-card layers peeking out to the upper-left of the
+	// front card to suggest a stack with some thickness. Drawn back to
+	// front, so the front (clickable) layer is always last and lands
+	// exactly at (stockOriginX, stockOriginY).
 	var stockCards []CardDraw
-	if len(s.board.Stock) > 0 {
-		stockCards = []CardDraw{{Image: s.back, X: stockOriginX, Y: stockOriginY}}
+	if layers := min(len(s.board.Stock), stockMaxLayers); layers > 0 {
+		for i := range layers {
+			depth := layers - 1 - i
+			stockCards = append(stockCards, CardDraw{
+				Image: s.back,
+				X:     stockOriginX - depth*stockLayerOffset,
+				Y:     stockOriginY - depth*stockLayerOffset,
+			})
+		}
 	}
 	s.stockPile.SetCards(stockCards)
 
