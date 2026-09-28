@@ -76,6 +76,12 @@ type Mediator struct {
 
 	rejected      RejectedDrop
 	rejectedTicks int
+
+	// stuck caches the latest finished Board.Stuck result, and
+	// stuckResult delivers the one currently being computed in the
+	// background, if any (see refreshStuck).
+	stuck       bool
+	stuckResult chan bool
 }
 
 // DropTargetKind identifies which kind of pile a RejectedDrop refers to.
@@ -119,7 +125,38 @@ func NewMediator(
 		tableauPiles:   tableauPiles,
 	}
 	root.SetEventHandler(m.Handle)
+	m.refreshStuck()
 	return m
+}
+
+// Stuck reports whether the board has been found to be stuck (see
+// internal/solitaire.Board.Stuck). The check runs in the background after
+// every change to the board, so this reports false until it finishes.
+func (m *Mediator) Stuck() bool {
+	return m.stuck
+}
+
+// refreshStuck starts checking, in the background, whether the board as
+// it is right now is stuck. It must be called after every change to the
+// board. The search can take up to a second or two, so it runs on a
+// Clone rather than blocking the game loop; any check still running for
+// an earlier board is abandoned (its result is never read).
+func (m *Mediator) refreshStuck() {
+	m.stuck = false
+	snapshot := m.board.Clone()
+	result := make(chan bool, 1)
+	m.stuckResult = result
+	go func() { result <- snapshot.Stuck() }()
+}
+
+// pollStuck picks up the background check's result, if it has finished.
+func (m *Mediator) pollStuck() {
+	select {
+	case s := <-m.stuckResult:
+		m.stuck = s
+		m.stuckResult = nil
+	default:
+	}
 }
 
 // Handle is installed as Root's event handler (see RootComponent.HandleEvent);
@@ -157,11 +194,13 @@ func (m *Mediator) RejectedDrop() (RejectedDrop, bool) {
 	return m.rejected, true
 }
 
-// Tick advances time by one Update tick, letting a RejectedDrop expire.
+// Tick advances time by one Update tick, letting a RejectedDrop expire
+// and picking up a finished background Stuck check.
 func (m *Mediator) Tick() {
 	if m.rejectedTicks > 0 {
 		m.rejectedTicks--
 	}
+	m.pollStuck()
 }
 
 func (m *Mediator) reject(r RejectedDrop) {
@@ -225,6 +264,7 @@ func (m *Mediator) handlePointerDown(x, y int) {
 
 	if pt.In(m.stockPile.Bounds()) {
 		m.board.DrawFromStock()
+		m.refreshStuck()
 		return
 	}
 
@@ -297,6 +337,8 @@ func (m *Mediator) handlePointerUp(x, y int) {
 		}
 		if !ok {
 			m.reject(RejectedDrop{Target: DropTargetFoundation, Index: int(m.drag.cards[0].Suit)})
+		} else {
+			m.refreshStuck()
 		}
 	default:
 		for i, p := range m.tableauPiles {
@@ -316,6 +358,8 @@ func (m *Mediator) handlePointerUp(x, y int) {
 			}
 			if !ok {
 				m.reject(RejectedDrop{Target: DropTargetTableau, Index: i})
+			} else {
+				m.refreshStuck()
 			}
 			return
 		}

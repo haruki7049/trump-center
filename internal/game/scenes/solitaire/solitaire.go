@@ -17,6 +17,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/haruki7049/trump-center/assets"
 	"github.com/haruki7049/trump-center/internal/card"
 	"github.com/haruki7049/trump-center/internal/scene"
@@ -97,6 +98,20 @@ const (
 	winMessageText = "You win!"
 	winMessageX    = 640
 	winMessageY    = 300
+
+	// stuckMessageText/stuckHintText are shown once Mediator.Stuck reports
+	// the game can no longer be won, over a translucent band
+	// (stuckBandY/stuckBandHeight, spanning windowWidth) so they stay
+	// readable on top of the tableau. Like winMessageX/Y, these are
+	// hardcoded rather than read from internal/game to avoid an import
+	// cycle.
+	stuckMessageText = "No moves left"
+	stuckHintText    = "Press New Game to start over"
+	windowWidth      = 1280
+	stuckBandY       = 320
+	stuckBandHeight  = 130
+	stuckMessageY    = stuckBandY + 12
+	stuckHintY       = stuckMessageY + 64
 )
 
 var (
@@ -105,6 +120,9 @@ var (
 	// rejectedDropColor briefly outlines a pile a drag was just illegally
 	// dropped on (see Mediator.RejectedDrop).
 	rejectedDropColor = color.NRGBA{0xff, 0x30, 0x30, 0xff}
+	// stuckBandColor is the translucent band behind the "No moves left"
+	// message.
+	stuckBandColor = color.NRGBA{0x00, 0x00, 0x00, 0xd0}
 )
 
 // SolitaireScene draws the stock, waste, foundation, and tableau piles of
@@ -348,6 +366,16 @@ func drawCard(screen *ebiten.Image, img *ebiten.Image, x, y int) {
 	screen.DrawImage(img, op)
 }
 
+// drawCenteredText draws str in white, horizontally centered on the
+// window (at winMessageX), with its top at y.
+func drawCenteredText(screen *ebiten.Image, str string, face text.Face, y float64) {
+	op := &text.DrawOptions{}
+	op.GeoM.Translate(winMessageX, y)
+	op.PrimaryAlign = text.AlignCenter
+	op.ColorScale.ScaleWithColor(color.White)
+	text.Draw(screen, str, face, op)
+}
+
 // drawLabels draws a small caption above each of the four play areas
 // (stock, waste, foundation, tableau), so a player unfamiliar with
 // Klondike's layout conventions can identify them at a glance. The
@@ -533,11 +561,11 @@ func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 	}
 
 	if s.board.Won() {
-		op := &text.DrawOptions{}
-		op.GeoM.Translate(winMessageX, winMessageY)
-		op.PrimaryAlign = text.AlignCenter
-		op.ColorScale.ScaleWithColor(color.White)
-		text.Draw(screen, winMessageText, s.fontFace, op)
+		drawCenteredText(screen, winMessageText, s.fontFace, winMessageY)
+	} else if s.mediator.Stuck() {
+		vector.FillRect(screen, 0, stuckBandY, windowWidth, stuckBandHeight, stuckBandColor, false)
+		drawCenteredText(screen, stuckMessageText, s.fontFace, stuckMessageY)
+		drawCenteredText(screen, stuckHintText, s.labelFontFace, stuckHintY)
 	}
 
 	s.ui.Draw(screen)
