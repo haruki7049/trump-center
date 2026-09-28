@@ -25,10 +25,12 @@ import (
 
 const (
 	// cardScale shrinks the source card images (409x600px) down to a size
-	// that fits several tableau piles on screen.
-	cardScale  = 0.25
-	cardWidth  = 102 // 409 * cardScale, rounded
-	cardHeight = 150 // 600 * cardScale, rounded
+	// that fits several tableau piles on screen. 0.3 is about the largest
+	// that still keeps the top row (stock, waste, four foundations) clear
+	// of the "New Game" button in a 1280px-wide window.
+	cardScale  = 0.3
+	cardWidth  = 123 // 409 * cardScale, rounded
+	cardHeight = 180 // 600 * cardScale, rounded
 
 	// stockOriginY leaves labelOffsetY of headroom above the first row for
 	// its area labels (see drawLabels).
@@ -48,9 +50,9 @@ const (
 	// player can see a little of their recent draw history. Only the
 	// rightmost (most recent) card is ever pickable.
 	wasteFanCount   = 3
-	wasteFanOffsetX = 16
+	wasteFanOffsetX = 20
 
-	foundationOriginX = wasteOriginX + cardWidth + 48
+	foundationOriginX = wasteOriginX + cardWidth + (wasteFanCount-1)*wasteFanOffsetX + 24
 	foundationOriginY = stockOriginY
 	foundationCount   = 4
 	foundationGapX    = cardWidth + 16
@@ -60,7 +62,19 @@ const (
 	// the first row, so the "Tableau" label also fits above it.
 	tableauOriginY = stockOriginY + cardHeight + 60
 	tableauGapX    = cardWidth + 16
-	faceUpOffsetY  = 24
+	// faceDownOffsetY and faceUpOffsetY are the vertical overlap steps in
+	// a tableau pile. Face-down cards show nothing worth reading, so they
+	// overlap more tightly, leaving room for the face-up cards' corner
+	// indices. faceUpOffsetY also spaces a dragged run.
+	faceDownOffsetY = 12
+	faceUpOffsetY   = 28
+	// minFaceUpOffsetY is how tightly a tall pile's face-up cards may be
+	// squeezed to keep it above tableauMaxBottom (see tableauCardY).
+	minFaceUpOffsetY = 12
+	// tableauMaxBottom is the lowest Y a tableau pile's last card should
+	// reach: the window height (internal/game.WINDOW_HEIGHT, hardcoded for
+	// the same import-cycle reason as winMessageX/Y) minus a small margin.
+	tableauMaxBottom = 720 - 16
 
 	// tableauColumnHeight is an arbitrarily generous height used only to
 	// detect drops anywhere below a tableau pile's origin.
@@ -425,12 +439,34 @@ func (s *SolitaireScene) syncComponents() {
 			if i >= faceDownCount {
 				img, _ = s.cardImage(c)
 			}
-			cards = append(cards, CardDraw{Image: img, X: x, Y: tableauOriginY + i*faceUpOffsetY})
+			cards = append(cards, CardDraw{Image: img, X: x, Y: tableauCardY(faceDownCount, pile.FaceUp, i)})
 		}
 		s.tableauPiles[pileIndex].SetCards(cards)
 	}
 
 	s.syncHighlights()
+}
+
+// tableauCardY returns the Y position of the card at index i in a tableau
+// pile with faceDownCount face-down cards under faceUpCount face-up ones.
+// Face-down cards step by faceDownOffsetY and face-up ones by
+// faceUpOffsetY, except that the face-up step shrinks (down to
+// minFaceUpOffsetY) when needed to keep the pile's last card above
+// tableauMaxBottom. The step depends only on the pile's contents, not on
+// what is currently being dragged out of it, so cards don't shift while
+// a run is lifted.
+func tableauCardY(faceDownCount, faceUpCount, i int) int {
+	if i < faceDownCount {
+		return tableauOriginY + i*faceDownOffsetY
+	}
+
+	faceUpTop := tableauOriginY + faceDownCount*faceDownOffsetY
+	step := faceUpOffsetY
+	if faceUpCount > 1 {
+		room := tableauMaxBottom - cardHeight - faceUpTop
+		step = max(minFaceUpOffsetY, min(faceUpOffsetY, room/(faceUpCount-1)))
+	}
+	return faceUpTop + (i-faceDownCount)*step
 }
 
 // syncHighlights outlines, as reported by the Mediator, every pile the
