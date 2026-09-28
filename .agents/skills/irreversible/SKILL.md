@@ -11,7 +11,7 @@ Prevent data loss, unwanted history changes, and broad side effects.
 Confirm before operations that may:
 
 - delete or overwrite user-authored files
-- change git history or push to remote
+- change git history that has been pushed (amend, rebase, or reset of pushed commits, and the force-push that follows), or push to `main`
 - affect databases, secrets, or production data
 - modify files outside the repository
 - apply broad formatting or auto-fixes outside the task scope
@@ -19,6 +19,11 @@ Confirm before operations that may:
 - delete, overwrite, or regenerate tracked game assets (`assets/cards/**`, `assets/fonts/**`)
 
 Judge deletion and overwrite risk by impact and recoverability, not by command name alone.
+
+## Not risky (no confirmation needed)
+
+- Ordinary pushes of new commits to a topic branch (see `.agents/skills/git-commit/SKILL.md`).
+- Deleting a local topic branch with `git branch -D` once its PR is confirmed merged (e.g. `gh pr view <number> --json state` reports `MERGED`). Squash merges leave the branch's own commits unmerged in git's eyes, so `git branch -d` refuses it even though the changes are on `main`.
 
 ## Pre-check
 

@@ -36,7 +36,7 @@ ______________________________________________________________________
 - **Verification Before Submitting**: All changes must pass `treefmt --fail-on-change`, `make build`, `make test`, and `make lint`, run inside `nix develop` (or via direnv).
 - **Conventional Commits**: Use conventional commit prefixes (`feat:`, `fix:`, `refactor:`, `docs:`, `build:`, `test:`), optionally with a scope (e.g. `build(flake.lock):`).
 - **Evidence First**: Base all answers and actions on actual file contents and command output. Never speculate or assume.
-- **Non-Destructive**: Never perform irreversible actions (file deletions, hard resets, remote push, removal or replacement of tracked assets) without explicit user approval.
+- **Non-Destructive**: Never perform irreversible actions (file deletions, hard resets, rewriting pushed history such as amending or rebasing pushed commits and force-pushing, pushing to `main`, removal or replacement of tracked assets) without explicit user approval. Ordinary pushes of new commits to a topic branch don't need approval (see above).
 - **Targeted Edits**: Make minimal, logical changes strictly necessary for the request. Do not modify unrelated files.
 - **English-Only Documentation**: All repository documentation, agent skills, code comments, commit messages, and PR descriptions must be written strictly in English.
 - **Explicit Milestone Assignment Only**: AI agents **MUST NEVER** automatically attach or set GitHub Milestones on Pull Requests or Issues unless explicitly requested or instructed by the user.
