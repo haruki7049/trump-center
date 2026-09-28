@@ -14,6 +14,11 @@ ______________________________________________________________________
 - **Development Environment**: Managed with Nix (`flake.nix`, with `default.nix` / `shell.nix` via `flake-compat`), `direnv` (`.envrc`), and `treefmt-nix` for formatting Nix, Go, GitHub Actions, Markdown, and shell scripts. `go`, `gopls`, `gomod2nix`, `nushell`, and `treefmt` are available on `PATH` inside `nix develop` (or via direnv). On Linux, the devShell also provides the X11 / ALSA / libGL libraries Ebitengine needs.
 - **Target Language Version**: Go `1.26.x` (`go` directive in `go.mod`), provided by `pkgs.go` in `flake.nix`.
 - **Nix Packaging**: The package is built with `gomod2nix` (`pkgs.buildGoApplication`). `gomod2nix.toml` holds the module hashes and **must** be regenerated whenever `go.mod` / `go.sum` change.
+- **Board UI Architecture (invariant)**: The solitaire board is built as Composite + Passive View + Chain of Responsibility + Mediator (see `ARCHITECTURE.md`). New board features must stay within that shape rather than adding logic to `SolitaireScene` or the components:
+  - Game rules and move validation live in `internal/solitaire`, with no UI code.
+  - Every decision about input goes through `Mediator`, which exposes its results for the scene to draw (as `Dragging`, `ValidDropTargets`, and `RejectedDrop` already do).
+  - `PileComponent` only draws what it is given (`CardDraw`, `Highlight`) and never decides anything.
+  - Widget-style chrome (buttons, menus) uses `ebitenui` instead, alongside the board.
 - **Directory Structure**:
   - `ARCHITECTURE.md`: Explains how the codebase is put together — the title scene's use of `ebitenui` vs. the solitaire board's custom Composite/Passive View/Chain-of-Responsibility/Mediator architecture, and why. Read this before making structural changes to `internal/game/scenes/solitaire`.
   - `cmd/trump-center/`: Executable entry point (`main` calls `game.Run()`).
