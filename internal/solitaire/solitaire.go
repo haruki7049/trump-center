@@ -192,3 +192,49 @@ func (b *Board) MoveTableauToTableau(from, to int) bool {
 	b.Tableau[to].FaceUp++
 	return true
 }
+
+// isValidRun reports whether cards forms a valid run a player could drag
+// as a unit: an alternating-color, descending-rank sequence such as the
+// black 7, red 6, black 5 at the top of a tableau pile.
+func isValidRun(cards []card.Card) bool {
+	for i := 1; i < len(cards); i++ {
+		prev, cur := cards[i-1], cards[i]
+		if cur.Rank != prev.Rank-1 || cur.Suit.Red() == prev.Suit.Red() {
+			return false
+		}
+	}
+	return true
+}
+
+// MoveTableauToTableauRun moves the run of cards starting at cardIndex
+// within the tableau pile at from onto the tableau pile at to, if
+// cardIndex points at a face-up card, the run from there to the top is a
+// valid alternating-color descending sequence, and placing its bottom
+// card onto to is legal. It reports whether the move happened. Moving a
+// single top card, as MoveTableauToTableau used to, is the case where
+// cardIndex is the pile's last index.
+func (b *Board) MoveTableauToTableauRun(from, cardIndex, to int) bool {
+	if from == to {
+		return false
+	}
+
+	fromPile := &b.Tableau[from]
+	faceDownCount := len(fromPile.Cards) - fromPile.FaceUp
+	if cardIndex < faceDownCount || cardIndex >= len(fromPile.Cards) {
+		return false
+	}
+
+	run := fromPile.Cards[cardIndex:]
+	if !isValidRun(run) || !b.CanMoveToTableau(run[0], to) {
+		return false
+	}
+
+	moved := append([]card.Card(nil), run...)
+	fromPile.Cards = fromPile.Cards[:cardIndex]
+	fromPile.FaceUp -= len(moved)
+	b.flipTopIfNeeded(from)
+
+	b.Tableau[to].Cards = append(b.Tableau[to].Cards, moved...)
+	b.Tableau[to].FaceUp += len(moved)
+	return true
+}
