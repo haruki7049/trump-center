@@ -116,11 +116,21 @@ func NewSolitaireScene() (*SolitaireScene, error) {
 		}
 	}
 
-	s.stockPile = NewPileComponent()
-	s.wastePile = NewPileComponent()
-	s.foundationPile = NewPileComponent()
+	s.stockPile = NewPileComponent(image.Rect(
+		stockOriginX, stockOriginY, stockOriginX+cardWidth, stockOriginY+cardHeight,
+	))
+	s.wastePile = NewPileComponent(image.Rect(
+		wasteOriginX, wasteOriginY, wasteOriginX+cardWidth, wasteOriginY+cardHeight,
+	))
+	s.foundationPile = NewPileComponent(image.Rect(
+		foundationOriginX, foundationOriginY,
+		foundationOriginX+foundationCount*foundationGapX-16, foundationOriginY+cardHeight,
+	))
 	for i := range s.tableauPiles {
-		s.tableauPiles[i] = NewPileComponent()
+		x := tableauOriginX + i*tableauGapX
+		s.tableauPiles[i] = NewPileComponent(image.Rect(
+			x, tableauOriginY, x+cardWidth, tableauOriginY+tableauColumnHeight,
+		))
 	}
 
 	children := []Component{s.stockPile, s.wastePile, s.foundationPile}
@@ -163,36 +173,6 @@ func loadImage(path string) (*ebiten.Image, error) {
 	return ebiten.NewImageFromImage(src), nil
 }
 
-func stockBounds() image.Rectangle {
-	return image.Rect(stockOriginX, stockOriginY, stockOriginX+cardWidth, stockOriginY+cardHeight)
-}
-
-func wasteBounds() image.Rectangle {
-	return image.Rect(wasteOriginX, wasteOriginY, wasteOriginX+cardWidth, wasteOriginY+cardHeight)
-}
-
-// foundationBounds spans the whole foundation row: any drop inside it is
-// treated as "move to the foundation of the dragged card's suit".
-func foundationBounds() image.Rectangle {
-	width := foundationCount*foundationGapX - 16
-	return image.Rect(foundationOriginX, foundationOriginY, foundationOriginX+width, foundationOriginY+cardHeight)
-}
-
-// tableauColumnBounds spans the full column below (and including) the
-// tableau pile's origin, so a card can be dropped anywhere along it.
-func tableauColumnBounds(pileIndex int) image.Rectangle {
-	x := tableauOriginX + pileIndex*tableauGapX
-	return image.Rect(x, tableauOriginY, x+cardWidth, tableauOriginY+tableauColumnHeight)
-}
-
-// tableauTopBounds is the clickable area of the top card of a tableau
-// pile with cardCount cards.
-func tableauTopBounds(pileIndex, cardCount int) image.Rectangle {
-	x := tableauOriginX + pileIndex*tableauGapX
-	y := tableauOriginY + (cardCount-1)*faceUpOffsetY
-	return image.Rect(x, y, x+cardWidth, y+cardHeight)
-}
-
 func (s *SolitaireScene) startDrag(source dragSource, tableauIndex int, c card.Card, cursorX, cursorY, originX, originY int) {
 	s.drag = drag{
 		active:       true,
@@ -206,39 +186,41 @@ func (s *SolitaireScene) startDrag(source dragSource, tableauIndex int, c card.C
 	}
 }
 
-// dropDrag attempts to move the dragged card to whatever pile is under
-// (x, y), doing nothing if the drop location or move is invalid.
+// dropDrag attempts to move the dragged card onto whatever component is
+// under (x, y), doing nothing if the drop location or move is invalid.
 func (s *SolitaireScene) dropDrag(x, y int) {
-	pt := image.Pt(x, y)
-
-	if pt.In(foundationBounds()) {
+	switch hit := s.root.HitTest(x, y); hit {
+	case Component(s.foundationPile):
 		switch s.drag.source {
 		case dragSourceWaste:
 			s.board.MoveWasteToFoundation()
 		case dragSourceTableau:
 			s.board.MoveTableauToFoundation(s.drag.tableauIndex)
 		}
-		return
-	}
-
-	for i := range s.board.Tableau {
-		if !pt.In(tableauColumnBounds(i)) {
-			continue
-		}
-
-		switch s.drag.source {
-		case dragSourceWaste:
-			s.board.MoveWasteToTableau(i)
-		case dragSourceTableau:
-			if i != s.drag.tableauIndex {
-				s.board.MoveTableauToTableau(s.drag.tableauIndex, i)
+	default:
+		for i, p := range s.tableauPiles {
+			if hit != Component(p) {
+				continue
 			}
+
+			switch s.drag.source {
+			case dragSourceWaste:
+				s.board.MoveWasteToTableau(i)
+			case dragSourceTableau:
+				if i != s.drag.tableauIndex {
+					s.board.MoveTableauToTableau(s.drag.tableauIndex, i)
+				}
+			}
+			return
 		}
-		return
 	}
 }
 
 func (s *SolitaireScene) Update() (scene.Scene, error) {
+	// Keep the (Passive View) component tree's TopBounds current before
+	// hit-testing against it below.
+	s.syncComponents()
+
 	if !s.drag.active {
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			x, y := ebiten.CursorPosition()
@@ -263,14 +245,16 @@ func (s *SolitaireScene) Update() (scene.Scene, error) {
 func (s *SolitaireScene) tryStartDrag(x, y int) {
 	pt := image.Pt(x, y)
 
-	if pt.In(stockBounds()) {
+	if pt.In(s.stockPile.Bounds()) {
 		s.board.DrawFromStock()
 		return
 	}
 
-	if c, ok := s.board.WasteTop(); ok && pt.In(wasteBounds()) {
-		s.startDrag(dragSourceWaste, -1, c, x, y, wasteOriginX, wasteOriginY)
-		return
+	if c, ok := s.board.WasteTop(); ok {
+		if b, ok := s.wastePile.TopBounds(); ok && pt.In(b) {
+			s.startDrag(dragSourceWaste, -1, c, x, y, b.Min.X, b.Min.Y)
+			return
+		}
 	}
 
 	for i, pile := range s.board.Tableau {
@@ -283,8 +267,8 @@ func (s *SolitaireScene) tryStartDrag(x, y int) {
 			continue
 		}
 
-		b := tableauTopBounds(i, len(pile.Cards))
-		if pt.In(b) {
+		b, ok := s.tableauPiles[i].TopBounds()
+		if ok && pt.In(b) {
 			s.startDrag(dragSourceTableau, i, c, x, y, b.Min.X, b.Min.Y)
 			return
 		}
