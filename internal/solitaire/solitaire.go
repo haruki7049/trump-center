@@ -182,29 +182,39 @@ func isValidRun(cards []card.Card) bool {
 	return true
 }
 
-// MoveTableauToTableauRun moves the run of cards starting at cardIndex
-// within the tableau pile at from onto the tableau pile at to, if
-// cardIndex points at a face-up card, the run from there to the top is a
-// valid alternating-color descending sequence, and placing its bottom
-// card onto to is legal. It reports whether the move happened. Moving a
-// single top card is the case where cardIndex is the pile's last index.
-func (b *Board) MoveTableauToTableauRun(from, cardIndex, to int) bool {
+// CanMoveTableauRunToTableau reports whether the run of cards starting at
+// cardIndex within the tableau pile at from can legally be moved onto the
+// tableau pile at to: from and to must differ, cardIndex must point at a
+// face-up card, the run from there to the top must be a valid
+// alternating-color descending sequence, and placing its bottom card onto
+// to must be legal.
+func (b *Board) CanMoveTableauRunToTableau(from, cardIndex, to int) bool {
 	if from == to {
 		return false
 	}
 
-	fromPile := &b.Tableau[from]
+	fromPile := b.Tableau[from]
 	faceDownCount := len(fromPile.Cards) - fromPile.FaceUp
 	if cardIndex < faceDownCount || cardIndex >= len(fromPile.Cards) {
 		return false
 	}
 
 	run := fromPile.Cards[cardIndex:]
-	if !isValidRun(run) || !b.CanMoveToTableau(run[0], to) {
+	return isValidRun(run) && b.CanMoveToTableau(run[0], to)
+}
+
+// MoveTableauToTableauRun moves the run of cards starting at cardIndex
+// within the tableau pile at from onto the tableau pile at to, if legal
+// (see CanMoveTableauRunToTableau), and reports whether the move
+// happened. Moving a single top card is the case where cardIndex is the
+// pile's last index.
+func (b *Board) MoveTableauToTableauRun(from, cardIndex, to int) bool {
+	if !b.CanMoveTableauRunToTableau(from, cardIndex, to) {
 		return false
 	}
 
-	moved := append([]card.Card(nil), run...)
+	fromPile := &b.Tableau[from]
+	moved := append([]card.Card(nil), fromPile.Cards[cardIndex:]...)
 	fromPile.Cards = fromPile.Cards[:cardIndex]
 	fromPile.FaceUp -= len(moved)
 	b.flipTopIfNeeded(from)

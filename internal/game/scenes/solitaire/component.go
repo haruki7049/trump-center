@@ -2,9 +2,11 @@ package solitaire
 
 import (
 	"image"
+	"image/color"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // Component is a node in the board's Composite view hierarchy. Every
@@ -120,10 +122,17 @@ type CardDraw struct {
 // the board — those live in internal/solitaire and (from Step 4 onward)
 // the Mediator.
 type PileComponent struct {
-	bounds image.Rectangle
-	cards  []CardDraw
-	parent Component
+	bounds     image.Rectangle
+	cards      []CardDraw
+	highlights []image.Rectangle
+	parent     Component
 }
+
+// highlightColor and highlightStrokeWidth style the outline PileComponent
+// draws around each rectangle passed to SetHighlights.
+var highlightColor = color.NRGBA{0xff, 0xd7, 0x00, 0xff}
+
+const highlightStrokeWidth = 4
 
 // NewPileComponent builds an empty PileComponent occupying bounds. Its
 // Parent is nil until it is passed to NewRootComponent.
@@ -148,6 +157,19 @@ func (p *PileComponent) HandleEvent(e Event) bool {
 // SetCards replaces the cards this component draws.
 func (p *PileComponent) SetCards(cards []CardDraw) {
 	p.cards = cards
+}
+
+// SetHighlights replaces the rectangles this component outlines on top of
+// its cards (e.g. valid drop targets while dragging). Like SetCards, it
+// only records what to draw; deciding what to highlight is the caller's
+// job.
+func (p *PileComponent) SetHighlights(rects []image.Rectangle) {
+	p.highlights = rects
+}
+
+// Highlights returns the rectangles most recently passed to SetHighlights.
+func (p *PileComponent) Highlights() []image.Rectangle {
+	return p.highlights
 }
 
 func (p *PileComponent) Children() []Component {
@@ -183,5 +205,12 @@ func (p *PileComponent) CardBoundsAt(i int) (image.Rectangle, bool) {
 func (p *PileComponent) Draw(screen *ebiten.Image) {
 	for _, c := range p.cards {
 		drawCard(screen, c.Image, c.X, c.Y)
+	}
+	for _, r := range p.highlights {
+		vector.StrokeRect(
+			screen,
+			float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()),
+			highlightStrokeWidth, highlightColor, true,
+		)
 	}
 }

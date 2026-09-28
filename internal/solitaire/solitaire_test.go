@@ -253,6 +253,44 @@ func TestBoard_MoveTableauToTableauRun_SamePile(t *testing.T) {
 	}
 }
 
+func TestBoard_CanMoveTableauRunToTableau(t *testing.T) {
+	b := solitaire.Board{
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			0: {Cards: []card.Card{
+				{Suit: card.Diamond, Rank: card.King}, // face-down
+				{Suit: card.Club, Rank: card.Eight},
+				{Suit: card.Heart, Rank: card.Seven},
+			}, FaceUp: 2},
+			1: {Cards: []card.Card{{Suit: card.Heart, Rank: card.Nine}}, FaceUp: 1},
+			2: {Cards: []card.Card{{Suit: card.Spade, Rank: card.Nine}}, FaceUp: 1},
+		},
+	}
+
+	tests := []struct {
+		name                string
+		from, cardIndex, to int
+		want                bool
+	}{
+		{"valid run onto opposite color", 0, 1, 1, true},
+		{"run onto same color", 0, 1, 2, false},
+		{"face-down card index", 0, 0, 1, false},
+		{"out-of-range card index", 0, 3, 1, false},
+		{"same pile", 0, 1, 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := b.CanMoveTableauRunToTableau(tt.from, tt.cardIndex, tt.to); got != tt.want {
+				t.Errorf("CanMoveTableauRunToTableau(%d, %d, %d) = %v; want %v", tt.from, tt.cardIndex, tt.to, got, tt.want)
+			}
+		})
+	}
+
+	// It must only report, never move anything.
+	if got := b.Tableau[0]; len(got.Cards) != 3 || got.FaceUp != 2 {
+		t.Errorf("source pile = %+v; want it unchanged", got)
+	}
+}
+
 func TestBoard_CanMoveToFoundation(t *testing.T) {
 	var b solitaire.Board
 
