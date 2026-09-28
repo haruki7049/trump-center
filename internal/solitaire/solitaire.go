@@ -4,6 +4,7 @@ package solitaire
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/haruki7049/trump-center/internal/card"
 )
@@ -56,6 +57,33 @@ func Deal(deck []card.Card) (*Board, error) {
 
 	b.Stock = append([]card.Card(nil), deck[i:]...)
 	return &b, nil
+}
+
+// DrawFromStock turns the top card of the stock face-up onto the waste
+// pile. If the stock is empty, it instead recycles the waste back into
+// the stock (in the order needed to reproduce the original draw order)
+// without drawing a card, matching standard Klondike rules; the caller
+// must call it again to draw.
+func (b *Board) DrawFromStock() {
+	if len(b.Stock) == 0 {
+		for _, c := range slices.Backward(b.Waste) {
+			b.Stock = append(b.Stock, c)
+		}
+		b.Waste = nil
+		return
+	}
+
+	top := b.Stock[len(b.Stock)-1]
+	b.Stock = b.Stock[:len(b.Stock)-1]
+	b.Waste = append(b.Waste, top)
+}
+
+// WasteTop returns the card at the top of the waste pile, if any.
+func (b *Board) WasteTop() (card.Card, bool) {
+	if len(b.Waste) == 0 {
+		return card.Card{}, false
+	}
+	return b.Waste[len(b.Waste)-1], true
 }
 
 // CanMoveToFoundation reports whether c can legally be placed on the
