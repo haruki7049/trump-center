@@ -120,6 +120,10 @@ func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(cardScale, cardScale)
 			op.GeoM.Translate(float64(x), float64(y))
+			// The source images are much larger than their drawn size, so
+			// linear filtering avoids the blocky look of the default
+			// nearest-neighbor downscaling.
+			op.Filter = ebiten.FilterLinear
 			screen.DrawImage(img, op)
 		}
 	}
