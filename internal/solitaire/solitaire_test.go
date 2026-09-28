@@ -296,3 +296,24 @@ func TestBoard_CanMoveToTableau(t *testing.T) {
 		t.Errorf("expected skipping a rank to be rejected")
 	}
 }
+
+func TestBoard_Won(t *testing.T) {
+	var b solitaire.Board
+	if b.Won() {
+		t.Error("expected an empty board to not be won")
+	}
+
+	for _, suit := range []card.Suit{card.Spade, card.Heart, card.Diamond, card.Club} {
+		for rank := card.Ace; rank <= card.King; rank++ {
+			b.Foundation[suit] = append(b.Foundation[suit], card.Card{Suit: suit, Rank: rank})
+		}
+	}
+	if !b.Won() {
+		t.Error("expected a board with all 52 cards on the foundations to be won")
+	}
+
+	b.Foundation[card.Club] = b.Foundation[card.Club][:len(b.Foundation[card.Club])-1]
+	if b.Won() {
+		t.Error("expected a board missing the last card of one foundation to not be won")
+	}
+}

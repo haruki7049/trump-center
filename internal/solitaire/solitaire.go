@@ -213,3 +213,14 @@ func (b *Board) MoveTableauToTableauRun(from, cardIndex, to int) bool {
 	b.Tableau[to].FaceUp += len(moved)
 	return true
 }
+
+// Won reports whether every foundation pile is complete (holds all 13
+// ranks of its suit), meaning the game has been won.
+func (b *Board) Won() bool {
+	for _, pile := range b.Foundation {
+		if len(pile) != int(card.King) {
+			return false
+		}
+	}
+	return true
+}
