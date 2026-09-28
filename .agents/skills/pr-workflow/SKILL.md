@@ -28,7 +28,9 @@ Use Conventional Commits style prefixes, optionally with a scope:
 - `docs:` Updates to README, AGENTS.md, skills, or code documentation.
 - `test:` Adding or updating tests.
 
-**Do NOT include issue numbers (e.g., `(#24)` or `#24`) in commit messages or PR titles.** Issue linkage must be done exclusively in the PR description using explicit issue-closing keywords (e.g. `Closes #24`).
+Capitalize the first word after the prefix (e.g. `feat(solitaire): Add a New Game button`), unless it is a literal command or identifier.
+
+**Do NOT include issue numbers (e.g., `(#24)` or `#24`) anywhere in commit messages (summary or body) or PR titles.** Issue linkage must be done exclusively in the PR description using explicit issue-closing keywords (e.g. `Closes #24`). Squash merges copy every commit message into `main`, so a closing keyword in a commit body can close the wrong issue. The ` (#N)` suffix GitHub itself appends to squash-merge summaries is the only exception. See `.agents/skills/git-commit/SKILL.md`.
 
 **Language**: Write all commit messages, PR titles, PR descriptions, and repository documentation strictly in English.
 

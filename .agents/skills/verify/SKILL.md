@@ -11,7 +11,7 @@ Do not run broad, slow, or destructive verification without approval.
 
 Prefer the narrowest check that matches the change:
 
-- Code change: run the smallest relevant test, typecheck, lint, or build command (e.g. `go test ./internal/ui/...` or `make test`)
+- Code change: run the smallest relevant test, typecheck, lint, or build command (e.g. `go test ./internal/solitaire/...` or `make test`)
 - Config change: validate syntax, reload dry-run, or run the smallest command that reads the config
 - Documentation change: check formatting, links, examples, or commands only when relevant
 - Refactor: run tests for the touched area, or explain why a broader check is needed

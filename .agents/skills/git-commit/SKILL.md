@@ -15,10 +15,12 @@ Follow the repository convention (see `.agents/skills/pr-workflow/SKILL.md`):
 
 - Use Conventional Commits style prefixes (`feat:`, `fix:`, `build:`, `refactor:`, `docs:`, `test:`), optionally with a scope such as `build(flake.lock):` or `fix(flake):`.
 - English, imperative mood, short summary, under 72 characters, no trailing period.
-- **Do NOT include issue numbers (e.g., `(#24)` or `#24`) in the commit summary.** Issue linkage must be done exclusively in the PR description using explicit issue-closing keywords (e.g. `Closes #24`).
+- Capitalize the first word after the prefix, matching the existing history, unless it is a literal command or identifier (e.g. `nix flake update`).
+- **Do NOT include issue numbers (e.g., `(#24)` or `#24`) anywhere in the commit message — neither the summary nor the body.** Issue linkage must be done exclusively in the PR description using explicit issue-closing keywords (e.g. `Closes #24`). This matters because squash merges copy every commit message into `main`, so a `Closes #24` in a commit body can close an issue the PR was never meant to close.
+- The ` (#N)` suffix GitHub appends to a squash-merge commit's summary (the PR number) is added by GitHub, not by agents, and is the one exception.
 
 Examples:
 
-- `feat: add a card selection scene`
-- `fix: ignore button clicks outside the window`
+- `feat: Add a card selection scene`
+- `fix: Ignore button clicks outside the window`
 - `build(flake.lock): nix flake update`
