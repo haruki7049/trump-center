@@ -85,6 +85,14 @@ const (
 	winMessageY    = 300
 )
 
+var (
+	// validDropColor outlines piles the current drag could be dropped on.
+	validDropColor = color.NRGBA{0xff, 0xd7, 0x00, 0xff}
+	// rejectedDropColor briefly outlines a pile a drag was just illegally
+	// dropped on (see Mediator.RejectedDrop).
+	rejectedDropColor = color.NRGBA{0xff, 0x30, 0x30, 0xff}
+)
+
 // SolitaireScene draws the stock, waste, foundation, and tableau piles of
 // a freshly dealt board, and lets the player draw from the stock and
 // drag cards between piles. All decision-making for those interactions
@@ -283,6 +291,7 @@ func loadFont(path string, size float64) (*text.GoTextFace, error) {
 // outside that event chain, same as the title scene's own UI.
 func (s *SolitaireScene) Update() (scene.Scene, error) {
 	s.ui.Update()
+	s.mediator.Tick()
 
 	if s.newGameRequested {
 		s.newGameRequested = false
@@ -424,28 +433,33 @@ func (s *SolitaireScene) syncComponents() {
 	s.syncHighlights()
 }
 
-// syncHighlights outlines every pile the current drag could legally be
-// dropped on, as reported by the Mediator, and clears all outlines when
-// nothing is being dragged. Each outline surrounds the card the drop
-// would land on, or the empty slot if the pile is empty.
+// syncHighlights outlines, as reported by the Mediator, every pile the
+// current drag could legally be dropped on (validDropColor), and the pile
+// a drag was just illegally dropped on (rejectedDropColor); with neither,
+// all outlines are cleared. Each outline surrounds the card a drop would
+// land on, or the empty slot if the pile is empty.
 func (s *SolitaireScene) syncHighlights() {
 	targets, _ := s.mediator.ValidDropTargets()
+	rejected, hasRejected := s.mediator.RejectedDrop()
 
-	var foundationHighlights []image.Rectangle
+	var foundationHighlights []Highlight
 	for i, ok := range targets.Foundation {
-		if !ok {
+		isRejected := hasRejected && rejected.Target == DropTargetFoundation && rejected.Index == i
+		if !ok && !isRejected {
 			continue
 		}
 		x := foundationOriginX + i*foundationGapX
-		foundationHighlights = append(foundationHighlights, image.Rect(
-			x, foundationOriginY, x+cardWidth, foundationOriginY+cardHeight,
-		))
+		foundationHighlights = append(foundationHighlights, Highlight{
+			Rect:  image.Rect(x, foundationOriginY, x+cardWidth, foundationOriginY+cardHeight),
+			Color: highlightColorFor(isRejected),
+		})
 	}
 	s.foundationPile.SetHighlights(foundationHighlights)
 
 	for i, ok := range targets.Tableau {
 		pile := s.tableauPiles[i]
-		if !ok {
+		isRejected := hasRejected && rejected.Target == DropTargetTableau && rejected.Index == i
+		if !ok && !isRejected {
 			pile.SetHighlights(nil)
 			continue
 		}
@@ -455,8 +469,17 @@ func (s *SolitaireScene) syncHighlights() {
 			x := tableauOriginX + i*tableauGapX
 			r = image.Rect(x, tableauOriginY, x+cardWidth, tableauOriginY+cardHeight)
 		}
-		pile.SetHighlights([]image.Rectangle{r})
+		pile.SetHighlights([]Highlight{{Rect: r, Color: highlightColorFor(isRejected)}})
 	}
+}
+
+// highlightColorFor picks rejectedDropColor for a rejected drop's pile,
+// and validDropColor otherwise.
+func highlightColorFor(rejected bool) color.Color {
+	if rejected {
+		return rejectedDropColor
+	}
+	return validDropColor
 }
 
 func (s *SolitaireScene) Draw(screen *ebiten.Image) {

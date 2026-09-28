@@ -123,7 +123,7 @@ func TestSolitaireScene_SyncComponents_HighlightsDropTargets(t *testing.T) {
 	for i := 1; i < solitaire.TableauPileCount; i++ {
 		x := tableauOriginX + i*tableauGapX
 		want := image.Rect(x, tableauOriginY, x+cardWidth, tableauOriginY+cardHeight)
-		if got := s.tableauPiles[i].Highlights(); len(got) != 1 || got[0] != want {
+		if got := s.tableauPiles[i].Highlights(); len(got) != 1 || got[0] != (Highlight{Rect: want, Color: validDropColor}) {
 			t.Errorf("tableau pile %d highlights = %v; want the empty slot %v", i, got, want)
 		}
 	}
@@ -159,12 +159,12 @@ func TestSolitaireScene_SyncComponents_HighlightsFoundationSlotAndTopCard(t *tes
 	// foundation; the outline should surround the Two itself and the
 	// Club slot specifically.
 	wantTop, _ := s.tableauPiles[0].TopBounds()
-	if got := s.tableauPiles[0].Highlights(); len(got) != 1 || got[0] != wantTop {
+	if got := s.tableauPiles[0].Highlights(); len(got) != 1 || got[0] != (Highlight{Rect: wantTop, Color: validDropColor}) {
 		t.Errorf("tableau pile 0 highlights = %v; want its top card %v", got, wantTop)
 	}
 	x := foundationOriginX + int(card.Club)*foundationGapX
 	wantSlot := image.Rect(x, foundationOriginY, x+cardWidth, foundationOriginY+cardHeight)
-	if got := s.foundationPile.Highlights(); len(got) != 1 || got[0] != wantSlot {
+	if got := s.foundationPile.Highlights(); len(got) != 1 || got[0] != (Highlight{Rect: wantSlot, Color: validDropColor}) {
 		t.Errorf("foundation highlights = %v; want the Club slot %v", got, wantSlot)
 	}
 }

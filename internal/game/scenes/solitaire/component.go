@@ -124,14 +124,18 @@ type CardDraw struct {
 type PileComponent struct {
 	bounds     image.Rectangle
 	cards      []CardDraw
-	highlights []image.Rectangle
+	highlights []Highlight
 	parent     Component
 }
 
-// highlightColor and highlightStrokeWidth style the outline PileComponent
-// draws around each rectangle passed to SetHighlights.
-var highlightColor = color.NRGBA{0xff, 0xd7, 0x00, 0xff}
+// Highlight is a fully-resolved instruction to outline one rectangle in
+// one color, the same way CardDraw is for a card image.
+type Highlight struct {
+	Rect  image.Rectangle
+	Color color.Color
+}
 
+// highlightStrokeWidth is the thickness of every Highlight's outline.
 const highlightStrokeWidth = 4
 
 // NewPileComponent builds an empty PileComponent occupying bounds. Its
@@ -159,16 +163,16 @@ func (p *PileComponent) SetCards(cards []CardDraw) {
 	p.cards = cards
 }
 
-// SetHighlights replaces the rectangles this component outlines on top of
-// its cards (e.g. valid drop targets while dragging). Like SetCards, it
-// only records what to draw; deciding what to highlight is the caller's
-// job.
-func (p *PileComponent) SetHighlights(rects []image.Rectangle) {
-	p.highlights = rects
+// SetHighlights replaces the outlines this component draws on top of its
+// cards (e.g. valid drop targets while dragging, or a rejected drop).
+// Like SetCards, it only records what to draw; deciding what to
+// highlight, and in which color, is the caller's job.
+func (p *PileComponent) SetHighlights(highlights []Highlight) {
+	p.highlights = highlights
 }
 
-// Highlights returns the rectangles most recently passed to SetHighlights.
-func (p *PileComponent) Highlights() []image.Rectangle {
+// Highlights returns the outlines most recently passed to SetHighlights.
+func (p *PileComponent) Highlights() []Highlight {
 	return p.highlights
 }
 
@@ -206,11 +210,12 @@ func (p *PileComponent) Draw(screen *ebiten.Image) {
 	for _, c := range p.cards {
 		drawCard(screen, c.Image, c.X, c.Y)
 	}
-	for _, r := range p.highlights {
+	for _, h := range p.highlights {
+		r := h.Rect
 		vector.StrokeRect(
 			screen,
 			float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()),
-			highlightStrokeWidth, highlightColor, true,
+			highlightStrokeWidth, h.Color, true,
 		)
 	}
 }
