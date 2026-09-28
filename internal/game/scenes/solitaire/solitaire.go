@@ -234,7 +234,7 @@ func (s *SolitaireScene) syncComponents() {
 
 		var cards []CardDraw
 		for i, c := range pile.Cards {
-			if draggingHere && i == len(pile.Cards)-1 {
+			if draggingHere && i >= dragState.CardIndex {
 				continue
 			}
 
@@ -253,8 +253,11 @@ func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 	s.root.Draw(screen)
 
 	if dragState, ok := s.mediator.Dragging(); ok {
-		img, _ := s.cardImage(dragState.Card)
 		x, y := ebiten.CursorPosition()
-		drawCard(screen, img, x-dragState.OffsetX, y-dragState.OffsetY)
+		baseX, baseY := x-dragState.OffsetX, y-dragState.OffsetY
+		for i, c := range dragState.Cards {
+			img, _ := s.cardImage(c)
+			drawCard(screen, img, baseX, baseY+i*faceUpOffsetY)
+		}
 	}
 }

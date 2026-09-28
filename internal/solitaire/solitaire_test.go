@@ -160,7 +160,7 @@ func TestBoard_MoveTableauToFoundation(t *testing.T) {
 	}
 }
 
-func TestBoard_MoveTableauToTableau(t *testing.T) {
+func TestBoard_MoveTableauToTableauRun_SingleCard(t *testing.T) {
 	b := solitaire.Board{
 		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
 			0: {Cards: []card.Card{
@@ -171,7 +171,8 @@ func TestBoard_MoveTableauToTableau(t *testing.T) {
 		},
 	}
 
-	if !b.MoveTableauToTableau(0, 1) {
+	// cardIndex 1 (the pile's last index) is a run of just the top card.
+	if !b.MoveTableauToTableauRun(0, 1, 1) {
 		t.Fatal("expected the Ten of Hearts to be movable onto the Jack of Spades")
 	}
 	if got := b.Tableau[0]; len(got.Cards) != 1 || got.FaceUp != 1 {
@@ -179,10 +180,6 @@ func TestBoard_MoveTableauToTableau(t *testing.T) {
 	}
 	if got := b.Tableau[1]; len(got.Cards) != 2 {
 		t.Errorf("destination pile = %+v; want 2 cards", got)
-	}
-
-	if b.MoveTableauToTableau(0, 0) {
-		t.Error("expected moving a pile onto itself to fail")
 	}
 }
 

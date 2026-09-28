@@ -169,30 +169,6 @@ func (b *Board) MoveTableauToFoundation(pileIndex int) bool {
 	return true
 }
 
-// MoveTableauToTableau moves the face-up top card of the tableau pile at
-// from onto the tableau pile at to, if legal, and reports whether the
-// move happened.
-func (b *Board) MoveTableauToTableau(from, to int) bool {
-	if from == to {
-		return false
-	}
-
-	fromPile := &b.Tableau[from]
-
-	c, ok := fromPile.Top()
-	if !ok || fromPile.FaceUp == 0 || !b.CanMoveToTableau(c, to) {
-		return false
-	}
-
-	fromPile.Cards = fromPile.Cards[:len(fromPile.Cards)-1]
-	fromPile.FaceUp--
-	b.flipTopIfNeeded(from)
-
-	b.Tableau[to].Cards = append(b.Tableau[to].Cards, c)
-	b.Tableau[to].FaceUp++
-	return true
-}
-
 // isValidRun reports whether cards forms a valid run a player could drag
 // as a unit: an alternating-color, descending-rank sequence such as the
 // black 7, red 6, black 5 at the top of a tableau pile.
@@ -211,8 +187,7 @@ func isValidRun(cards []card.Card) bool {
 // cardIndex points at a face-up card, the run from there to the top is a
 // valid alternating-color descending sequence, and placing its bottom
 // card onto to is legal. It reports whether the move happened. Moving a
-// single top card, as MoveTableauToTableau used to, is the case where
-// cardIndex is the pile's last index.
+// single top card is the case where cardIndex is the pile's last index.
 func (b *Board) MoveTableauToTableauRun(from, cardIndex, to int) bool {
 	if from == to {
 		return false
