@@ -73,7 +73,34 @@ type Mediator struct {
 
 	state MediatorState
 	drag  dragInfo
+
+	rejected      RejectedDrop
+	rejectedTicks int
 }
+
+// DropTargetKind identifies which kind of pile a RejectedDrop refers to.
+type DropTargetKind int
+
+const (
+	// DropTargetFoundation is a foundation slot; RejectedDrop.Index is
+	// its suit.
+	DropTargetFoundation DropTargetKind = iota
+	// DropTargetTableau is a tableau pile; RejectedDrop.Index is its
+	// position.
+	DropTargetTableau
+)
+
+// RejectedDrop identifies the pile a drag was just dropped on without the
+// move being legal, so SolitaireScene can briefly mark it.
+type RejectedDrop struct {
+	Target DropTargetKind
+	Index  int
+}
+
+// rejectedDropTicks is how many Update ticks (half a second at
+// Ebitengine's default 60 TPS) a RejectedDrop stays reported after it
+// happens.
+const rejectedDropTicks = 30
 
 // NewMediator builds a Mediator for board and the given piles, and
 // installs it as root's event handler.
@@ -119,6 +146,27 @@ func (m *Mediator) Dragging() (DragState, bool) {
 		OffsetX:      m.drag.offsetX,
 		OffsetY:      m.drag.offsetY,
 	}, true
+}
+
+// RejectedDrop reports the most recent illegal drop, and whether it is
+// still recent enough (see rejectedDropTicks) to be shown.
+func (m *Mediator) RejectedDrop() (RejectedDrop, bool) {
+	if m.rejectedTicks <= 0 {
+		return RejectedDrop{}, false
+	}
+	return m.rejected, true
+}
+
+// Tick advances time by one Update tick, letting a RejectedDrop expire.
+func (m *Mediator) Tick() {
+	if m.rejectedTicks > 0 {
+		m.rejectedTicks--
+	}
+}
+
+func (m *Mediator) reject(r RejectedDrop) {
+	m.rejected = r
+	m.rejectedTicks = rejectedDropTicks
 }
 
 // DropTargets reports, for an in-progress drag, which piles the dragged
@@ -169,6 +217,10 @@ func (m *Mediator) handlePointerDown(x, y int) {
 		return
 	}
 
+	// Any new click means the player has moved on from the last
+	// rejection.
+	m.rejectedTicks = 0
+
 	pt := image.Pt(x, y)
 
 	if pt.In(m.stockPile.Bounds()) {
@@ -215,9 +267,11 @@ func (m *Mediator) startDrag(source dragSource, tableauIndex, cardIndex int, car
 }
 
 // handlePointerUp attempts to move the dragged card onto whatever
-// component is under (x, y), doing nothing if the drop location or move
-// is invalid. It does nothing if no drag is in progress, and always ends
-// the drag (returning to MediatorIdle) if one was.
+// component is under (x, y). If that's a foundation or tableau pile and
+// the move is illegal, it records a RejectedDrop; dropping anywhere else,
+// including back onto the card's own tableau pile, just cancels the drag.
+// It does nothing if no drag is in progress, and always ends the drag
+// (returning to MediatorIdle) if one was.
 func (m *Mediator) handlePointerUp(x, y int) {
 	if m.state != MediatorDragging {
 		return
@@ -229,16 +283,20 @@ func (m *Mediator) handlePointerUp(x, y int) {
 
 	switch hit := m.root.HitTest(x, y); hit {
 	case Component(m.foundationPile):
+		var ok bool
 		switch m.drag.source {
 		case dragSourceWaste:
-			m.board.MoveWasteToFoundation()
+			ok = m.board.MoveWasteToFoundation()
 		case dragSourceTableau:
-			// Only a single card can go to the foundation; dropping a
-			// multi-card run there is invalid and silently does nothing,
-			// matching standard Klondike rules.
+			// Only a single card can go to the foundation; a multi-card
+			// run is always rejected there, matching standard Klondike
+			// rules.
 			if len(m.drag.cards) == 1 {
-				m.board.MoveTableauToFoundation(m.drag.tableauIndex)
+				ok = m.board.MoveTableauToFoundation(m.drag.tableauIndex)
 			}
+		}
+		if !ok {
+			m.reject(RejectedDrop{Target: DropTargetFoundation, Index: int(m.drag.cards[0].Suit)})
 		}
 	default:
 		for i, p := range m.tableauPiles {
@@ -246,13 +304,18 @@ func (m *Mediator) handlePointerUp(x, y int) {
 				continue
 			}
 
+			var ok bool
 			switch m.drag.source {
 			case dragSourceWaste:
-				m.board.MoveWasteToTableau(i)
+				ok = m.board.MoveWasteToTableau(i)
 			case dragSourceTableau:
-				if i != m.drag.tableauIndex {
-					m.board.MoveTableauToTableauRun(m.drag.tableauIndex, m.drag.cardIndex, i)
+				if i == m.drag.tableauIndex {
+					return
 				}
+				ok = m.board.MoveTableauToTableauRun(m.drag.tableauIndex, m.drag.cardIndex, i)
+			}
+			if !ok {
+				m.reject(RejectedDrop{Target: DropTargetTableau, Index: i})
 			}
 			return
 		}
