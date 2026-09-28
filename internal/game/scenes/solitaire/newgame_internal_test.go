@@ -1,12 +1,35 @@
 package solitaire
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 func TestNewSolitaireScene_BuildsUI(t *testing.T) {
 	s := newTestScene(t)
 	if s.ui == nil {
 		t.Error("expected ui to be initialized")
 	}
+	if s.labelFontFace == nil {
+		t.Error("expected labelFontFace to be initialized")
+	}
+}
+
+// TestSolitaireScene_Draw_DrawsLabels exercises Draw's label-drawing
+// path directly, since it isn't otherwise covered by any behavior
+// assertion (only that it doesn't panic).
+func TestSolitaireScene_Draw_DrawsLabels(t *testing.T) {
+	s := newTestScene(t)
+	screen := ebiten.NewImage(1280, 720)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("drawLabels panicked: %v", r)
+		}
+	}()
+
+	s.drawLabels(screen)
 }
 
 // TestSolitaireScene_NewGameRequested_Redeals verifies that setting

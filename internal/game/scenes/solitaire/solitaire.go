@@ -30,8 +30,10 @@ const (
 	cardWidth  = 102 // 409 * cardScale, rounded
 	cardHeight = 150 // 600 * cardScale, rounded
 
+	// stockOriginY leaves labelOffsetY of headroom above the first row for
+	// its area labels (see drawLabels).
 	stockOriginX = 16
-	stockOriginY = 16
+	stockOriginY = 36
 	wasteOriginX = stockOriginX + cardWidth + 16
 	wasteOriginY = stockOriginY
 
@@ -41,13 +43,25 @@ const (
 	foundationGapX    = cardWidth + 16
 
 	tableauOriginX = 16
-	tableauOriginY = stockOriginY + cardHeight + 24
+	// tableauOriginY leaves a bit more room than the bare minimum below
+	// the first row, so the "Tableau" label also fits above it.
+	tableauOriginY = stockOriginY + cardHeight + 32
 	tableauGapX    = cardWidth + 16
 	faceUpOffsetY  = 24
 
 	// tableauColumnHeight is an arbitrarily generous height used only to
 	// detect drops anywhere below a tableau pile's origin.
 	tableauColumnHeight = 2000
+
+	// labelFontSize and labelOffsetY size and position the small area
+	// labels drawn above the stock, waste, foundation, and tableau.
+	labelFontSize = 14
+	labelOffsetY  = 20
+
+	stockLabel      = "Stock"
+	wasteLabel      = "Waste"
+	foundationLabel = "Foundation"
+	tableauLabel    = "Tableau"
 
 	// winMessageText is shown once Board.Won reports the game complete.
 	// winMessageX/Y are hardcoded rather than centered on the window size
@@ -64,11 +78,12 @@ const (
 // lives in its Mediator; SolitaireScene itself only polls input,
 // dispatches events, and draws.
 type SolitaireScene struct {
-	board    *solitaire.Board
-	images   map[string]*ebiten.Image
-	back     *ebiten.Image
-	fontFace text.Face
-	ui       *ebitenui.UI
+	board         *solitaire.Board
+	images        map[string]*ebiten.Image
+	back          *ebiten.Image
+	fontFace      text.Face
+	labelFontFace text.Face
+	ui            *ebitenui.UI
 
 	root           *RootComponent
 	stockPile      *PileComponent
@@ -92,11 +107,17 @@ func NewSolitaireScene() (*SolitaireScene, error) {
 	}
 	s.back = back
 
-	fontFace, err := loadFont("fonts/DotGothic16/DotGothic16-Regular.ttf")
+	fontFace, err := loadFont("fonts/DotGothic16/DotGothic16-Regular.ttf", 48)
 	if err != nil {
 		return nil, err
 	}
 	s.fontFace = fontFace
+
+	labelFontFace, err := loadFont("fonts/DotGothic16/DotGothic16-Regular.ttf", labelFontSize)
+	if err != nil {
+		return nil, err
+	}
+	s.labelFontFace = labelFontFace
 
 	if err := s.deal(); err != nil {
 		return nil, err
@@ -226,7 +247,7 @@ func loadImage(path string) (*ebiten.Image, error) {
 	return ebiten.NewImageFromImage(src), nil
 }
 
-func loadFont(path string) (*text.GoTextFace, error) {
+func loadFont(path string, size float64) (*text.GoTextFace, error) {
 	f, err := assets.Assets.Open(path)
 	if err != nil {
 		return nil, err
@@ -238,7 +259,7 @@ func loadFont(path string) (*text.GoTextFace, error) {
 		return nil, err
 	}
 
-	return &text.GoTextFace{Source: src, Size: 48}, nil
+	return &text.GoTextFace{Source: src, Size: size}, nil
 }
 
 // Update polls input and dispatches it as Events, which bubble up to the
@@ -288,6 +309,25 @@ func drawCard(screen *ebiten.Image, img *ebiten.Image, x, y int) {
 	op.GeoM.Translate(float64(x), float64(y))
 	op.Filter = ebiten.FilterLinear
 	screen.DrawImage(img, op)
+}
+
+// drawLabels draws a small caption above each of the four play areas
+// (stock, waste, foundation, tableau), so a player unfamiliar with
+// Klondike's layout conventions can identify them at a glance. The
+// tableau gets a single label above its first column, representing the
+// whole row of seven piles as one area.
+func (s *SolitaireScene) drawLabel(screen *ebiten.Image, label string, x, y int) {
+	op := &text.DrawOptions{}
+	op.GeoM.Translate(float64(x), float64(y))
+	op.ColorScale.ScaleWithColor(color.White)
+	text.Draw(screen, label, s.labelFontFace, op)
+}
+
+func (s *SolitaireScene) drawLabels(screen *ebiten.Image) {
+	s.drawLabel(screen, stockLabel, stockOriginX, stockOriginY-labelOffsetY)
+	s.drawLabel(screen, wasteLabel, wasteOriginX, wasteOriginY-labelOffsetY)
+	s.drawLabel(screen, foundationLabel, foundationOriginX, foundationOriginY-labelOffsetY)
+	s.drawLabel(screen, tableauLabel, tableauOriginX, tableauOriginY-labelOffsetY)
 }
 
 // syncComponents recomputes the CardDraw values for every PileComponent
@@ -347,6 +387,7 @@ func (s *SolitaireScene) syncComponents() {
 
 func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 	s.syncComponents()
+	s.drawLabels(screen)
 	s.root.Draw(screen)
 
 	if dragState, ok := s.mediator.Dragging(); ok {
