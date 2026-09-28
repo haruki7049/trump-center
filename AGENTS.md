@@ -36,7 +36,7 @@ ______________________________________________________________________
 
 ## 2. Strict Safety & Operational Rules (Always Enforced)
 
-- **NO AUTONOMOUS CHANGES TO MAIN**: AI agents **MUST NEVER** merge PRs, execute `git merge` into `main`, or commit / push to `main` on their own initiative. Work on topic branches by default. Committing or pushing to `main` directly is allowed only when the user explicitly instructs it for that specific change.
+- **NO AUTONOMOUS CHANGES TO MAIN**: AI agents **MUST NEVER** merge PRs (including enabling auto-merge with `gh pr merge --auto`), execute `git merge` into `main`, or commit / push to `main` on their own initiative. Work on topic branches by default. Committing or pushing to `main` directly is allowed only when the user explicitly instructs it for that specific change.
 - **NEVER PROPOSE COMMITS OR PUSHES UNPROMPTED**: AI agents **MUST NEVER** prompt the user to commit or push, nor propose commit messages unprompted. When instructed by the user or when creating/updating pull requests on topic branches, agents may execute `git commit` and `git push` directly without seeking confirmation.
 - **Mandatory Human Approval**: AI agents may create branches, create commits, push topic branches, propose PRs, format code, and run test suites, but the final action of merging changes into `main` rests strictly with the human maintainer.
 - **Verification Before Submitting**: All changes must pass `treefmt --fail-on-change`, `make build`, `make test`, and `make lint`, run inside `nix develop` (or via direnv).
@@ -46,6 +46,7 @@ ______________________________________________________________________
 - **Targeted Edits**: Make minimal, logical changes strictly necessary for the request. Do not modify unrelated files.
 - **English-Only Documentation**: All repository documentation, agent skills, code comments, commit messages, and PR descriptions must be written strictly in English.
 - **Explicit Milestone Assignment Only**: AI agents **MUST NEVER** automatically attach or set GitHub Milestones on Pull Requests or Issues unless explicitly requested or instructed by the user.
+- **No Session Links**: Do not include AI session URLs or other internal session identifiers (e.g. a `Claude-Session:` trailer) in commit messages, PR descriptions, issues, or comments. Such links are not accessible from outside the private session, so publishing them in this public repository serves no purpose and only confuses readers. A `Co-Authored-By:` trailer is fine. Exception: if the user explicitly states the session is public and instructs the agent to include its URL, doing so is allowed.
 
 ______________________________________________________________________
 
