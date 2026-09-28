@@ -74,6 +74,12 @@ type SolitaireScene struct {
 	images map[string]*ebiten.Image
 	back   *ebiten.Image
 	drag   drag
+
+	root           *RootComponent
+	stockPile      *PileComponent
+	wastePile      *PileComponent
+	foundationPile *PileComponent
+	tableauPiles   [solitaire.TableauPileCount]*PileComponent
 }
 
 // NewSolitaireScene deals a new, shuffled board and preloads the card
@@ -109,6 +115,19 @@ func NewSolitaireScene() (*SolitaireScene, error) {
 			return nil, err
 		}
 	}
+
+	s.stockPile = NewPileComponent()
+	s.wastePile = NewPileComponent()
+	s.foundationPile = NewPileComponent()
+	for i := range s.tableauPiles {
+		s.tableauPiles[i] = NewPileComponent()
+	}
+
+	children := []Component{s.stockPile, s.wastePile, s.foundationPile}
+	for _, p := range s.tableauPiles {
+		children = append(children, p)
+	}
+	s.root = NewRootComponent(children...)
 
 	return &s, nil
 }
@@ -272,7 +291,10 @@ func (s *SolitaireScene) tryStartDrag(x, y int) {
 	}
 }
 
-func (s *SolitaireScene) drawCard(screen *ebiten.Image, img *ebiten.Image, x, y int) {
+// drawCard renders a single card image at (x, y) in board coordinates,
+// scaled down and linearly filtered to avoid the blocky look of the
+// default nearest-neighbor downscaling.
+func drawCard(screen *ebiten.Image, img *ebiten.Image, x, y int) {
 	if img == nil {
 		return
 	}
@@ -280,54 +302,69 @@ func (s *SolitaireScene) drawCard(screen *ebiten.Image, img *ebiten.Image, x, y 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(cardScale, cardScale)
 	op.GeoM.Translate(float64(x), float64(y))
-	// The source images are much larger than their drawn size, so linear
-	// filtering avoids the blocky look of the default nearest-neighbor
-	// downscaling.
 	op.Filter = ebiten.FilterLinear
 	screen.DrawImage(img, op)
 }
 
-func (s *SolitaireScene) Draw(screen *ebiten.Image) {
+// syncComponents recomputes the CardDraw values for every PileComponent
+// from the current board state, so the (Passive View) component tree
+// reflects the latest game state before it is drawn.
+func (s *SolitaireScene) syncComponents() {
+	var stockCards []CardDraw
 	if len(s.board.Stock) > 0 {
-		s.drawCard(screen, s.back, stockOriginX, stockOriginY)
+		stockCards = []CardDraw{{Image: s.back, X: stockOriginX, Y: stockOriginY}}
 	}
+	s.stockPile.SetCards(stockCards)
 
+	var foundationCards []CardDraw
 	for i, pile := range s.board.Foundation {
 		if len(pile) == 0 {
 			continue
 		}
 		img, _ := s.cardImage(pile[len(pile)-1])
-		s.drawCard(screen, img, foundationOriginX+i*foundationGapX, foundationOriginY)
+		foundationCards = append(foundationCards, CardDraw{
+			Image: img,
+			X:     foundationOriginX + i*foundationGapX,
+			Y:     foundationOriginY,
+		})
 	}
+	s.foundationPile.SetCards(foundationCards)
 
+	var wasteCards []CardDraw
 	draggingWaste := s.drag.active && s.drag.source == dragSourceWaste
 	if top, ok := s.board.WasteTop(); ok && !draggingWaste {
 		img, _ := s.cardImage(top)
-		s.drawCard(screen, img, wasteOriginX, wasteOriginY)
+		wasteCards = []CardDraw{{Image: img, X: wasteOriginX, Y: wasteOriginY}}
 	}
+	s.wastePile.SetCards(wasteCards)
 
 	for pileIndex, pile := range s.board.Tableau {
 		x := tableauOriginX + pileIndex*tableauGapX
 		faceDownCount := len(pile.Cards) - pile.FaceUp
 		draggingHere := s.drag.active && s.drag.source == dragSourceTableau && s.drag.tableauIndex == pileIndex
 
+		var cards []CardDraw
 		for i, c := range pile.Cards {
 			if draggingHere && i == len(pile.Cards)-1 {
 				continue
 			}
 
-			y := tableauOriginY + i*faceUpOffsetY
-
 			img := s.back
 			if i >= faceDownCount {
 				img, _ = s.cardImage(c)
 			}
-			s.drawCard(screen, img, x, y)
+			cards = append(cards, CardDraw{Image: img, X: x, Y: tableauOriginY + i*faceUpOffsetY})
 		}
+		s.tableauPiles[pileIndex].SetCards(cards)
 	}
+}
+
+func (s *SolitaireScene) Draw(screen *ebiten.Image) {
+	s.syncComponents()
+	s.root.Draw(screen)
 
 	if s.drag.active {
 		img, _ := s.cardImage(s.drag.card)
-		s.drawCard(screen, img, s.drag.cursorX-s.drag.offsetX, s.drag.cursorY-s.drag.offsetY)
+		drawCard(screen, img, s.drag.cursorX-s.drag.offsetX, s.drag.cursorY-s.drag.offsetY)
 	}
 }
