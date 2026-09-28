@@ -16,6 +16,15 @@ This split follows from distinguishing two senses of "UI":
 
 These aren't competing frameworks fighting over the same job. `SolitaireScene` (`internal/game/scenes/solitaire/solitaire.go`) draws its own component tree for the board *and* holds an `*ebitenui.UI` for the "New Game" button, side by side: `Update` calls `s.ui.Update()` for the button and dispatches board input separately; `Draw` calls `s.root.Draw(screen)` for the board and `s.ui.Draw(screen)` for the button. Neither one knows about the other. This is a working example of the two senses of UI coexisting on one scene, not just a claim.
 
+```mermaid
+graph TD
+    Scene["SolitaireScene"]
+    Scene --> Root["RootComponent<br/>(broad-sense UI: cards &amp; piles)"]
+    Scene --> UI["ebitenui.UI<br/>(narrow-sense UI: New Game button)"]
+    Root -.Draw.-> Screen(("screen"))
+    UI -.Draw.-> Screen
+```
+
 ## Game rules vs. the view: two packages
 
 Klondike's rules live in `internal/solitaire`, independent of Ebitengine or any drawing code:
@@ -51,6 +60,19 @@ type Component interface {
 ```
 
 `RootComponent` is the root of the tree; its children are the stock, waste, foundation, and seven tableau piles, each a `PileComponent`. `RootComponent.Draw` just draws its children in order; `RootComponent.HitTest(x, y)` walks them to find which one contains a point. There's no deeper nesting today — every pile is a direct child of `Root` — but the tree shape is what lets hit-testing and event bubbling (below) be written once, generically, instead of per-pile.
+
+```mermaid
+graph TD
+    Root["RootComponent"]
+    Root --> Stock["PileComponent: stock"]
+    Root --> Waste["PileComponent: waste"]
+    Root --> Foundation["PileComponent: foundation"]
+    Root --> T0["PileComponent: tableau 0"]
+    Root --> T1["PileComponent: tableau 1"]
+    Root --> Tmore["..."]
+    Root --> T6["PileComponent: tableau 6"]
+    Med["Mediator"] -.SetEventHandler.-> Root
+```
 
 ### Passive View: `PileComponent`
 
@@ -123,6 +145,38 @@ It reads real input, turns it into an `Event`, and hands it off — it has no id
 ## Walkthrough: dragging a card
 
 Tying the whole chain together, here's what happens end to end when the player picks up and drops a card:
+
+```mermaid
+sequenceDiagram
+    actor Player
+    participant Scene as SolitaireScene
+    participant Root as RootComponent
+    participant Leaf as PileComponent (leaf)
+    participant Med as Mediator
+    participant Board as internal/solitaire.Board
+
+    Player->>Scene: press mouse
+    Scene->>Root: HitTest(x, y)
+    Root-->>Scene: leaf
+    Scene->>Leaf: Dispatch(EventPointerDown)
+    Leaf->>Root: bubbles via Parent() (Leaf declines)
+    Root->>Med: Handle(event)
+    Med->>Med: handlePointerDown: start drag
+
+    loop every frame while dragging
+        Scene->>Med: Dragging()
+        Med-->>Scene: DragState
+        Scene->>Scene: syncComponents / draw floating cards
+    end
+
+    Player->>Scene: release mouse
+    Scene->>Root: Dispatch(EventPointerUp)
+    Root->>Med: Handle(event)
+    Med->>Med: handlePointerUp: hit-test drop target
+    Med->>Board: MoveTableauToTableauRun(...)
+    Board-->>Med: true / false
+    Med->>Med: back to MediatorIdle
+```
 
 1. **Press.** `Update` reads the cursor position, sees `IsMouseButtonJustPressed`, and calls `s.root.HitTest(x, y)` to find which `PileComponent` is under the cursor.
 1. **Dispatch.** `Dispatch(hit, Event{EventPointerDown, x, y})` walks from that leaf up to `Root`. The leaf's own `HandleEvent` declines; `Root`'s delegates to `Mediator.Handle`.
