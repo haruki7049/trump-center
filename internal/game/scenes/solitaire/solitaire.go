@@ -11,6 +11,9 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/ebitenui/ebitenui"
+	eimage "github.com/ebitenui/ebitenui/image"
+	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -65,6 +68,7 @@ type SolitaireScene struct {
 	images   map[string]*ebiten.Image
 	back     *ebiten.Image
 	fontFace text.Face
+	ui       *ebitenui.UI
 
 	root           *RootComponent
 	stockPile      *PileComponent
@@ -72,21 +76,14 @@ type SolitaireScene struct {
 	foundationPile *PileComponent
 	tableauPiles   [solitaire.TableauPileCount]*PileComponent
 	mediator       *Mediator
+
+	newGameRequested bool
 }
 
-// NewSolitaireScene deals a new, shuffled board and preloads the card
-// images needed to draw it.
+// NewSolitaireScene deals a new, shuffled board and preloads the assets
+// needed to draw it and its "New Game" button.
 func NewSolitaireScene() (*SolitaireScene, error) {
-	deck := card.NewDeck()
-	card.Shuffle(deck, rand.New(rand.NewSource(time.Now().UnixNano())))
-
-	board, err := solitaire.Deal(deck)
-	if err != nil {
-		return nil, err
-	}
-
 	var s SolitaireScene
-	s.board = board
 	s.images = make(map[string]*ebiten.Image)
 
 	back, err := loadImage("cards/back.png")
@@ -101,16 +98,39 @@ func NewSolitaireScene() (*SolitaireScene, error) {
 	}
 	s.fontFace = fontFace
 
+	if err := s.deal(); err != nil {
+		return nil, err
+	}
+
+	s.buildUI()
+
+	return &s, nil
+}
+
+// deal shuffles a fresh 52-card deck, deals it into a new Board, and
+// rebuilds the component tree and Mediator around it. It is used both by
+// NewSolitaireScene at startup and by Update whenever the player clicks
+// "New Game".
+func (s *SolitaireScene) deal() error {
+	deck := card.NewDeck()
+	card.Shuffle(deck, rand.New(rand.NewSource(time.Now().UnixNano())))
+
+	board, err := solitaire.Deal(deck)
+	if err != nil {
+		return err
+	}
+	s.board = board
+
 	for _, pile := range board.Tableau {
 		for _, c := range pile.Cards {
 			if _, err := s.cardImage(c); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 	for _, c := range board.Stock {
 		if _, err := s.cardImage(c); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -139,7 +159,40 @@ func NewSolitaireScene() (*SolitaireScene, error) {
 
 	s.mediator = NewMediator(s.board, s.root, s.stockPile, s.wastePile, s.foundationPile, s.tableauPiles)
 
-	return &s, nil
+	return nil
+}
+
+// buildUI builds the scene's narrow-sense UI: a single "New Game" button,
+// anchored to the top-right corner so it never overlaps the board. This
+// is real interactive chrome (unlike the plain win-message text drawn
+// directly in Draw), so per the project's UI policy it goes through
+// ebitenui, coexisting here with the custom Composite/Mediator board
+// architecture on the same scene.
+func (s *SolitaireScene) buildUI() {
+	rootContainer := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
+	)
+
+	newGameButton := widget.NewButton(
+		widget.ButtonOpts.Image(&widget.ButtonImage{
+			Idle:    eimage.NewNineSliceColor(color.NRGBA{0x40, 0x40, 0x40, 0xff}),
+			Hover:   eimage.NewNineSliceColor(color.NRGBA{0x60, 0x60, 0x60, 0xff}),
+			Pressed: eimage.NewNineSliceColor(color.NRGBA{0x20, 0x20, 0x20, 0xff}),
+		}),
+		widget.ButtonOpts.Text("New Game", &s.fontFace, &widget.ButtonTextColor{Idle: color.White}),
+		widget.ButtonOpts.TextPadding(&widget.Insets{Left: 16, Right: 16, Top: 8, Bottom: 8}),
+		widget.ButtonOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.AnchorLayoutData{
+			HorizontalPosition: widget.AnchorLayoutPositionEnd,
+			VerticalPosition:   widget.AnchorLayoutPositionStart,
+			Padding:            &widget.Insets{Top: 16, Right: 16},
+		})),
+		widget.ButtonOpts.ClickedHandler(func(_ *widget.ButtonClickedEventArgs) {
+			s.newGameRequested = true
+		}),
+	)
+	rootContainer.AddChild(newGameButton)
+
+	s.ui = &ebitenui.UI{Container: rootContainer}
 }
 
 // cardImage returns the (cached) image for c, loading it on first use.
@@ -190,8 +243,20 @@ func loadFont(path string) (*text.GoTextFace, error) {
 
 // Update polls input and dispatches it as Events, which bubble up to the
 // Mediator (installed on s.root) via Chain of Responsibility; the
-// Mediator owns all decisions about what those events mean.
+// Mediator owns all decisions about what those events mean. It also
+// drives the "New Game" button's ebitenui.UI, which lives alongside but
+// outside that event chain, same as the title scene's own UI.
 func (s *SolitaireScene) Update() (scene.Scene, error) {
+	s.ui.Update()
+
+	if s.newGameRequested {
+		s.newGameRequested = false
+		if err := s.deal(); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
 	// Keep the (Passive View) component tree's TopBounds current before
 	// the Mediator hit-tests against it while handling the events below.
 	s.syncComponents()
@@ -300,4 +365,6 @@ func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 		op.ColorScale.ScaleWithColor(color.White)
 		text.Draw(screen, winMessageText, s.fontFace, op)
 	}
+
+	s.ui.Draw(screen)
 }
