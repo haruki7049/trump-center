@@ -31,6 +31,14 @@ func TestPileComponent_Draw(t *testing.T) {
 	p.Draw(screen)
 }
 
+func TestRootComponent_Bounds(t *testing.T) {
+	root := NewRootComponent()
+
+	if got, want := root.Bounds(), (image.Rectangle{}); got != want {
+		t.Errorf("Bounds() = %v; want %v", got, want)
+	}
+}
+
 func TestRootComponent_HitTest(t *testing.T) {
 	p1 := NewPileComponent(image.Rect(0, 0, 100, 100))
 	p2 := NewPileComponent(image.Rect(200, 200, 300, 300))
