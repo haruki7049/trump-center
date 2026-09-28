@@ -23,6 +23,12 @@ const maxStuckSearchStates = 300_000
 // search, and returns false for a won game, or if the search hits
 // maxStuckSearchStates before finishing.
 func (b *Board) Stuck() bool {
+	return b.stuckWithin(maxStuckSearchStates)
+}
+
+// stuckWithin is Stuck with the search bound as a parameter, so tests can
+// exercise what happens when the bound is hit.
+func (b *Board) stuckWithin(maxStates int) bool {
 	if b.Won() {
 		return false
 	}
@@ -49,7 +55,7 @@ func (b *Board) Stuck() bool {
 			if _, ok := visited[key]; ok {
 				continue
 			}
-			if len(visited) >= maxStuckSearchStates {
+			if len(visited) >= maxStates {
 				return false
 			}
 			visited[key] = struct{}{}

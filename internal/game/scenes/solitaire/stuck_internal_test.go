@@ -2,6 +2,7 @@ package solitaire
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/haruki7049/trump-center/internal/card"
@@ -117,4 +118,70 @@ func TestSolitaireScene_Draw_WhenStuck(t *testing.T) {
 		}
 	}()
 	s.Draw(ebiten.NewImage(1280, 720))
+}
+
+func TestSolitaireScene_BoardMessage(t *testing.T) {
+	won := &solitaire.Board{}
+	for suit := range won.Foundation {
+		for r := card.Ace; r <= card.King; r++ {
+			won.Foundation[suit] = append(won.Foundation[suit], card.Card{Suit: card.Suit(suit), Rank: r})
+		}
+	}
+	playable := stuckBoard()
+	playable.Stock = append(playable.Stock, card.Card{Suit: card.Diamond, Rank: card.Ace})
+
+	tests := []struct {
+		name  string
+		board *solitaire.Board
+		want  boardMessage
+	}{
+		{"won", won, boardMessageWon},
+		{"stuck", stuckBoard(), boardMessageStuck},
+		{"moves remain", playable, boardMessageNone},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newTestScene(t)
+			s.setBoard(tt.board)
+			s.mediator.waitStuck()
+
+			if got := s.boardMessage(); got != tt.want {
+				t.Errorf("boardMessage() = %v; want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestSolitaireScene_StuckMessageAppearsAfterLastMove plays the move that
+// leaves the board stuck, then runs the scene's own Update loop (as the
+// game would) and checks the message appears within a second, and that
+// it wasn't shown before the move while a move remained.
+func TestSolitaireScene_StuckMessageAppearsAfterLastMove(t *testing.T) {
+	s := newTestScene(t)
+	b := stuckBoard()
+	b.Waste = []card.Card{{Suit: card.Diamond, Rank: card.Ace}}
+	s.setBoard(b)
+	s.mediator.waitStuck()
+	s.syncComponents()
+
+	if got := s.boardMessage(); got != boardMessageNone {
+		t.Fatalf("boardMessage() = %v before the last move; want none", got)
+	}
+
+	top, _ := s.wastePile.TopBounds()
+	s.mediator.Handle(Event{Type: EventPointerDown, X: top.Min.X, Y: top.Min.Y})
+	s.mediator.Handle(Event{Type: EventPointerUp, X: foundationOriginX + 1, Y: foundationOriginY + 1})
+	if len(s.board.Foundation[card.Diamond]) != 1 {
+		t.Fatal("expected the Ace to be moved to the foundation")
+	}
+
+	deadline := time.Now().Add(time.Second)
+	for s.boardMessage() != boardMessageStuck {
+		if time.Now().After(deadline) {
+			t.Fatal("expected the stuck message within a second of the last move")
+		}
+		if _, err := s.Update(); err != nil {
+			t.Fatalf("unexpected error from Update: %v", err)
+		}
+	}
 }
