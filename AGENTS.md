@@ -24,10 +24,11 @@ ______________________________________________________________________
   - `cmd/trump-center/`: Executable entry point (`main` calls `game.Run()`).
   - `internal/game/`: Root `ebiten.Game` implementation (`Game`, `Run()`, `NewGame()`) and window constants (`constants.go`). `Game` owns the active scene and delegates `Update`/`Draw` to it.
   - `internal/game/scenes/<name>/`: Concrete scenes (`title`, `solitaire`).
+  - `internal/card/`: The playing-card data model (suits, ranks, a standard 52-card deck, shuffling) shared by any game built on it.
   - `internal/solitaire/`: Klondike solitaire's board layout and move rules, independent of any UI (see `ARCHITECTURE.md`).
   - `internal/scene/`: The `Scene` interface. `Update()` returns the next `Scene`, or `nil` to stay on the current one.
   - `assets/`: Embedded game assets (`assets.go`): card images under `assets/cards/` and the DotGothic16 font (OFL) under `assets/fonts/`.
-  - `scripts/*.nu`: Nushell scripts invoked by the `Makefile` (`build`, `clean`, `test`, `fmt`, `lint`, `update`). They are written in Nushell for cross-platform (including Windows) support.
+  - `scripts/*.nu`: Nushell scripts invoked by the `Makefile` (`build`, `clean`, `test`, `coverage`, `fmt`, `lint`, `update`). They are written in Nushell for cross-platform (including Windows) support.
   - `.github/workflows/`: CI. `go.yml` runs `go build`, `go vet`, and `go test` on Linux (under `xvfb-run`), macOS, and Windows. `nix-checker.yml` runs `nix flake check --all-systems` (treefmt + `gomod2nix` package build without tests) and evaluates the devShell on Linux and macOS.
   - `Makefile`: Entry points: `make build` (outputs to `target/bin/`), `make run`, `make test`, `make coverage` (outputs to `target/coverage/`), `make fmt`, `make lint`, `make clean`, `make update`.
 
