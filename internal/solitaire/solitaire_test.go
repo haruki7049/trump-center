@@ -186,6 +186,76 @@ func TestBoard_MoveTableauToTableau(t *testing.T) {
 	}
 }
 
+func TestBoard_MoveTableauToTableauRun(t *testing.T) {
+	b := solitaire.Board{
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			0: {Cards: []card.Card{
+				{Suit: card.Diamond, Rank: card.King}, // face-down
+				{Suit: card.Club, Rank: card.Eight},
+				{Suit: card.Heart, Rank: card.Seven},
+				{Suit: card.Club, Rank: card.Six},
+			}, FaceUp: 3},
+			1: {Cards: []card.Card{{Suit: card.Heart, Rank: card.Nine}}, FaceUp: 1},
+		},
+	}
+
+	// cardIndex 1 is the Eight of Clubs, the bottom of a valid 8-7-6 run.
+	if !b.MoveTableauToTableauRun(0, 1, 1) {
+		t.Fatal("expected the 8-7-6 run to be movable onto the 9 of Hearts")
+	}
+	if got := b.Tableau[0]; len(got.Cards) != 1 || got.FaceUp != 1 {
+		t.Errorf("source pile = %+v; want 1 card, FaceUp=1 (the King flipped face-up)", got)
+	}
+	if got := b.Tableau[1]; len(got.Cards) != 4 || got.FaceUp != 4 {
+		t.Errorf("destination pile = %+v; want 4 cards, FaceUp=4", got)
+	}
+}
+
+func TestBoard_MoveTableauToTableauRun_InvalidRun(t *testing.T) {
+	b := solitaire.Board{
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			// Eight then Six is not a valid run (skips the Seven).
+			0: {Cards: []card.Card{
+				{Suit: card.Club, Rank: card.Eight},
+				{Suit: card.Club, Rank: card.Six},
+			}, FaceUp: 2},
+			1: {Cards: []card.Card{{Suit: card.Spade, Rank: card.Nine}}, FaceUp: 1},
+		},
+	}
+
+	if b.MoveTableauToTableauRun(0, 0, 1) {
+		t.Error("expected an invalid run to not be movable")
+	}
+}
+
+func TestBoard_MoveTableauToTableauRun_FaceDownCardIndex(t *testing.T) {
+	b := solitaire.Board{
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			0: {Cards: []card.Card{
+				{Suit: card.Club, Rank: card.Eight}, // face-down
+				{Suit: card.Heart, Rank: card.Seven},
+			}, FaceUp: 1},
+			1: {Cards: []card.Card{{Suit: card.Spade, Rank: card.Nine}}, FaceUp: 1},
+		},
+	}
+
+	if b.MoveTableauToTableauRun(0, 0, 1) {
+		t.Error("expected picking a run starting at a face-down card to fail")
+	}
+}
+
+func TestBoard_MoveTableauToTableauRun_SamePile(t *testing.T) {
+	b := solitaire.Board{
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			0: {Cards: []card.Card{{Suit: card.Heart, Rank: card.Seven}}, FaceUp: 1},
+		},
+	}
+
+	if b.MoveTableauToTableauRun(0, 0, 0) {
+		t.Error("expected moving a run onto its own pile to fail")
+	}
+}
+
 func TestBoard_CanMoveToFoundation(t *testing.T) {
 	var b solitaire.Board
 
