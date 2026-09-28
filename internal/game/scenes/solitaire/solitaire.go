@@ -420,6 +420,43 @@ func (s *SolitaireScene) syncComponents() {
 		}
 		s.tableauPiles[pileIndex].SetCards(cards)
 	}
+
+	s.syncHighlights()
+}
+
+// syncHighlights outlines every pile the current drag could legally be
+// dropped on, as reported by the Mediator, and clears all outlines when
+// nothing is being dragged. Each outline surrounds the card the drop
+// would land on, or the empty slot if the pile is empty.
+func (s *SolitaireScene) syncHighlights() {
+	targets, _ := s.mediator.ValidDropTargets()
+
+	var foundationHighlights []image.Rectangle
+	for i, ok := range targets.Foundation {
+		if !ok {
+			continue
+		}
+		x := foundationOriginX + i*foundationGapX
+		foundationHighlights = append(foundationHighlights, image.Rect(
+			x, foundationOriginY, x+cardWidth, foundationOriginY+cardHeight,
+		))
+	}
+	s.foundationPile.SetHighlights(foundationHighlights)
+
+	for i, ok := range targets.Tableau {
+		pile := s.tableauPiles[i]
+		if !ok {
+			pile.SetHighlights(nil)
+			continue
+		}
+
+		r, hasTop := pile.TopBounds()
+		if !hasTop {
+			x := tableauOriginX + i*tableauGapX
+			r = image.Rect(x, tableauOriginY, x+cardWidth, tableauOriginY+cardHeight)
+		}
+		pile.SetHighlights([]image.Rectangle{r})
+	}
 }
 
 func (s *SolitaireScene) Draw(screen *ebiten.Image) {

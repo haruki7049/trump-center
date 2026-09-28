@@ -114,6 +114,7 @@ Every `PileComponent` declines (see above), so every event bubbles straight past
 
 - Starting a drag on pointer-down: drawing from the stock, or picking up a face-up tableau card (and every card above it, as a run) or the waste's top card.
 - Resolving pointer-up: hit-testing the drop target and calling the matching `internal/solitaire.Board` method (`MoveWasteToFoundation`, `MoveTableauToTableauRun`, etc.).
+- Answering "where could the current drag legally be dropped right now" (`ValidDropTargets`), using the same `Board.CanMove...` checks the moves themselves use, so the board can highlight those piles while `PileComponent` (which only outlines whatever rectangles `SetHighlights` gives it) still decides nothing.
 
 Nothing else in the package makes a decision like this. `PileComponent` can't (Passive View), `SolitaireScene` doesn't (see below) — it's centralized in one place specifically so that decision logic can be tested against synthetic `Event` values, without a display or real mouse input (see `mediator_internal_test.go`).
 
@@ -140,7 +141,7 @@ func (s *SolitaireScene) Update() (scene.Scene, error) {
 }
 ```
 
-It reads real input, turns it into an `Event`, and hands it off — it has no idea what dragging a card even means. `syncComponents` is the one place that reaches into `*solitaire.Board` and `Mediator.Dragging()` to compute what each `PileComponent` should currently draw (including hiding the card(s) currently being dragged from their source pile).
+It reads real input, turns it into an `Event`, and hands it off — it has no idea what dragging a card even means. `syncComponents` is the one place that reaches into `*solitaire.Board`, `Mediator.Dragging()`, and `Mediator.ValidDropTargets()` to compute what each `PileComponent` should currently draw (including hiding the card(s) currently being dragged from their source pile, and outlining the piles they could be dropped on).
 
 ## Walkthrough: dragging a card
 
@@ -191,5 +192,5 @@ At no point does `PileComponent` know it's part of a card game, and `SolitaireSc
 
 This document describes the architecture as it exists after `internal/solitaire`'s core rules (draw, move, win detection) and the board's Composite/Passive View/CoR/Mediator refactor were both completed. Known follow-up work that will extend it without changing its shape:
 
-- Highlighting valid drop targets while dragging (tracked separately) will need `Mediator` to expose "would dropping here be legal," which `PileComponent` can render without gaining any decision logic of its own — the same separation as everything above.
+- Feedback for invalid drops (tracked separately) can follow the same path as drop-target highlighting: `Mediator` reports that a drop was rejected, and `PileComponent` just renders whatever it's told.
 - A beginner-assist feature (hints, etc.) is an open idea, not yet scoped.

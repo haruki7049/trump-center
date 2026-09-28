@@ -121,6 +121,45 @@ func (m *Mediator) Dragging() (DragState, bool) {
 	}, true
 }
 
+// DropTargets reports, for an in-progress drag, which piles the dragged
+// card(s) could legally be dropped on right now. Foundation is indexed by
+// suit, the same way internal/solitaire.Board.Foundation is.
+type DropTargets struct {
+	Foundation [4]bool
+	Tableau    [solitaire.TableauPileCount]bool
+}
+
+// ValidDropTargets reports where the current drag could legally be
+// dropped, and whether a drag is active at all. It applies exactly the
+// same rules as handlePointerUp, so SolitaireScene can highlight those
+// piles without knowing any game rules itself.
+func (m *Mediator) ValidDropTargets() (DropTargets, bool) {
+	if m.state != MediatorDragging {
+		return DropTargets{}, false
+	}
+
+	var t DropTargets
+	bottom := m.drag.cards[0]
+
+	switch m.drag.source {
+	case dragSourceWaste:
+		t.Foundation[bottom.Suit] = m.board.CanMoveToFoundation(bottom)
+		for i := range t.Tableau {
+			t.Tableau[i] = m.board.CanMoveToTableau(bottom, i)
+		}
+	case dragSourceTableau:
+		// Only a single card can go to the foundation (see handlePointerUp).
+		if len(m.drag.cards) == 1 {
+			t.Foundation[bottom.Suit] = m.board.CanMoveToFoundation(bottom)
+		}
+		for i := range t.Tableau {
+			t.Tableau[i] = m.board.CanMoveTableauRunToTableau(m.drag.tableauIndex, m.drag.cardIndex, i)
+		}
+	}
+
+	return t, true
+}
+
 // handlePointerDown draws from the stock, or picks up the top card of the
 // waste, or a face-up tableau card and every card above it as a run, if
 // the pointer is over one of them. It does nothing while already
