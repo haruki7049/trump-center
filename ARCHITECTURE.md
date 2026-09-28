@@ -115,6 +115,7 @@ Every `PileComponent` declines (see above), so every event bubbles straight past
 - Starting a drag on pointer-down: drawing from the stock, or picking up a face-up tableau card (and every card above it, as a run) or the waste's top card.
 - Resolving pointer-up: hit-testing the drop target and calling the matching `internal/solitaire.Board` method (`MoveWasteToFoundation`, `MoveTableauToTableauRun`, etc.). If the move is illegal, it records a `RejectedDrop` for that pile, which it keeps reporting for half a second (`Tick`, called once per `Update`) so the board can briefly flag it.
 - Answering "where could the current drag legally be dropped right now" (`ValidDropTargets`), using the same `Board.CanMove...` checks the moves themselves use, so the board can highlight those piles while `PileComponent` (which only outlines whatever `Highlight` rectangles and colors `SetHighlights` gives it) still decides nothing.
+- Knowing whether the game is stuck (`Stuck`): after every change to the board, it hands a `Board.Clone()` to a goroutine running `Board.Stuck()` (a bounded search that can take up to a second or two, so it must not block the game loop), and `Tick` picks up the result once it's ready. This is the only concurrency on the board; the goroutine only ever touches its own copy, and a result for an outdated board is simply never read.
 
 Nothing else in the package makes a decision like this. `PileComponent` can't (Passive View), `SolitaireScene` doesn't (see below) — it's centralized in one place specifically so that decision logic can be tested against synthetic `Event` values, without a display or real mouse input (see `mediator_internal_test.go`).
 
@@ -192,4 +193,4 @@ At no point does `PileComponent` know it's part of a card game, and `SolitaireSc
 
 This document describes the architecture as it exists after `internal/solitaire`'s core rules (draw, move, win detection) and the board's Composite/Passive View/CoR/Mediator refactor were both completed. Known follow-up work that will extend it without changing its shape:
 
-- A beginner-assist feature (#61: hints, detecting when no progress is possible, etc.) is an open idea, not yet scoped. Its checks belong in `internal/solitaire`, exposed through `Mediator` the same way `ValidDropTargets` is.
+- The rest of the beginner-assist feature (#61): a hint button (#80) can reuse `Board.Stuck`'s search to find a move that leads to progress, and the drop-target outlines to show it; auto-moving to the foundation on double-click (#81) is a new `Event` type handled by `Mediator`.

@@ -23,10 +23,21 @@ func newTestScene(t *testing.T) *SolitaireScene {
 }
 
 // setBoard replaces s's board with board and points the Mediator at it,
-// keeping both in sync the way NewSolitaireScene does at construction.
+// keeping both in sync the way NewSolitaireScene does at construction
+// (including restarting the background Stuck check).
 func (s *SolitaireScene) setBoard(board *solitaire.Board) {
 	s.board = board
 	s.mediator.board = board
+	s.mediator.refreshStuck()
+}
+
+// waitStuck blocks until the Mediator's background Stuck check (if any)
+// finishes, and records its result the way Tick would.
+func (m *Mediator) waitStuck() {
+	if m.stuckResult != nil {
+		m.stuck = <-m.stuckResult
+		m.stuckResult = nil
+	}
 }
 
 func TestMediator_Handle_PointerDown_DrawsFromStock(t *testing.T) {
