@@ -114,3 +114,81 @@ func (b *Board) CanMoveToTableau(c card.Card, pileIndex int) bool {
 
 	return c.Rank == top.Rank-1 && c.Suit.Red() != top.Suit.Red()
 }
+
+// flipTopIfNeeded turns the new top card of a tableau pile face-up after
+// its previous top card was removed, if it isn't already.
+func (b *Board) flipTopIfNeeded(pileIndex int) {
+	pile := &b.Tableau[pileIndex]
+	if pile.FaceUp == 0 && len(pile.Cards) > 0 {
+		pile.FaceUp = 1
+	}
+}
+
+// MoveWasteToFoundation moves the top waste card onto its foundation
+// pile, if legal, and reports whether the move happened.
+func (b *Board) MoveWasteToFoundation() bool {
+	c, ok := b.WasteTop()
+	if !ok || !b.CanMoveToFoundation(c) {
+		return false
+	}
+
+	b.Waste = b.Waste[:len(b.Waste)-1]
+	b.Foundation[c.Suit] = append(b.Foundation[c.Suit], c)
+	return true
+}
+
+// MoveWasteToTableau moves the top waste card onto the tableau pile at
+// pileIndex, if legal, and reports whether the move happened.
+func (b *Board) MoveWasteToTableau(pileIndex int) bool {
+	c, ok := b.WasteTop()
+	if !ok || !b.CanMoveToTableau(c, pileIndex) {
+		return false
+	}
+
+	b.Waste = b.Waste[:len(b.Waste)-1]
+	b.Tableau[pileIndex].Cards = append(b.Tableau[pileIndex].Cards, c)
+	b.Tableau[pileIndex].FaceUp++
+	return true
+}
+
+// MoveTableauToFoundation moves the face-up top card of the tableau pile
+// at pileIndex onto its foundation pile, if legal, and reports whether
+// the move happened.
+func (b *Board) MoveTableauToFoundation(pileIndex int) bool {
+	pile := &b.Tableau[pileIndex]
+
+	c, ok := pile.Top()
+	if !ok || pile.FaceUp == 0 || !b.CanMoveToFoundation(c) {
+		return false
+	}
+
+	pile.Cards = pile.Cards[:len(pile.Cards)-1]
+	pile.FaceUp--
+	b.flipTopIfNeeded(pileIndex)
+	b.Foundation[c.Suit] = append(b.Foundation[c.Suit], c)
+	return true
+}
+
+// MoveTableauToTableau moves the face-up top card of the tableau pile at
+// from onto the tableau pile at to, if legal, and reports whether the
+// move happened.
+func (b *Board) MoveTableauToTableau(from, to int) bool {
+	if from == to {
+		return false
+	}
+
+	fromPile := &b.Tableau[from]
+
+	c, ok := fromPile.Top()
+	if !ok || fromPile.FaceUp == 0 || !b.CanMoveToTableau(c, to) {
+		return false
+	}
+
+	fromPile.Cards = fromPile.Cards[:len(fromPile.Cards)-1]
+	fromPile.FaceUp--
+	b.flipTopIfNeeded(from)
+
+	b.Tableau[to].Cards = append(b.Tableau[to].Cards, c)
+	b.Tableau[to].FaceUp++
+	return true
+}

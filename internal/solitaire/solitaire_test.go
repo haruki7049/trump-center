@@ -100,6 +100,92 @@ func TestBoard_DrawFromStock(t *testing.T) {
 	}
 }
 
+func TestBoard_MoveWasteToFoundation(t *testing.T) {
+	b := solitaire.Board{Waste: []card.Card{{Suit: card.Spade, Rank: card.Ace}}}
+
+	if !b.MoveWasteToFoundation() {
+		t.Fatal("expected the Ace to be movable to an empty foundation")
+	}
+	if len(b.Waste) != 0 {
+		t.Errorf("expected waste to be empty, got %d cards", len(b.Waste))
+	}
+	if len(b.Foundation[card.Spade]) != 1 {
+		t.Errorf("expected 1 card on the spade foundation, got %d", len(b.Foundation[card.Spade]))
+	}
+
+	if b.MoveWasteToFoundation() {
+		t.Error("expected the move to fail on an empty waste")
+	}
+}
+
+func TestBoard_MoveWasteToTableau(t *testing.T) {
+	b := solitaire.Board{
+		Waste: []card.Card{{Suit: card.Heart, Rank: card.Queen}},
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			0: {Cards: []card.Card{{Suit: card.Spade, Rank: card.King}}, FaceUp: 1},
+		},
+	}
+
+	if !b.MoveWasteToTableau(0) {
+		t.Fatal("expected Queen of Hearts to be movable onto the King of Spades")
+	}
+	if len(b.Waste) != 0 {
+		t.Errorf("expected waste to be empty, got %d cards", len(b.Waste))
+	}
+	if got := b.Tableau[0]; len(got.Cards) != 2 || got.FaceUp != 2 {
+		t.Errorf("tableau pile 0 = %+v; want 2 cards, FaceUp=2", got)
+	}
+}
+
+func TestBoard_MoveTableauToFoundation(t *testing.T) {
+	b := solitaire.Board{
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			0: {Cards: []card.Card{
+				{Suit: card.Club, Rank: card.King},
+				{Suit: card.Club, Rank: card.Ace},
+			}, FaceUp: 1},
+		},
+	}
+
+	if !b.MoveTableauToFoundation(0) {
+		t.Fatal("expected the Ace to be movable to an empty foundation")
+	}
+	if got := b.Tableau[0]; len(got.Cards) != 1 || got.FaceUp != 1 {
+		t.Errorf("tableau pile 0 = %+v; want 1 card, FaceUp=1 (previous card flipped up)", got)
+	}
+
+	// The King is face-down, so it must not be movable.
+	if b.MoveTableauToFoundation(0) {
+		t.Error("expected the face-down King to not be movable")
+	}
+}
+
+func TestBoard_MoveTableauToTableau(t *testing.T) {
+	b := solitaire.Board{
+		Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+			0: {Cards: []card.Card{
+				{Suit: card.Club, Rank: card.Queen},
+				{Suit: card.Heart, Rank: card.Ten},
+			}, FaceUp: 1},
+			1: {Cards: []card.Card{{Suit: card.Spade, Rank: card.Jack}}, FaceUp: 1},
+		},
+	}
+
+	if !b.MoveTableauToTableau(0, 1) {
+		t.Fatal("expected the Ten of Hearts to be movable onto the Jack of Spades")
+	}
+	if got := b.Tableau[0]; len(got.Cards) != 1 || got.FaceUp != 1 {
+		t.Errorf("source pile = %+v; want 1 card, FaceUp=1", got)
+	}
+	if got := b.Tableau[1]; len(got.Cards) != 2 {
+		t.Errorf("destination pile = %+v; want 2 cards", got)
+	}
+
+	if b.MoveTableauToTableau(0, 0) {
+		t.Error("expected moving a pile onto itself to fail")
+	}
+}
+
 func TestBoard_CanMoveToFoundation(t *testing.T) {
 	var b solitaire.Board
 
