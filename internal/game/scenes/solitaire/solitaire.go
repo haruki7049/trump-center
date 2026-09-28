@@ -366,6 +366,30 @@ func drawCard(screen *ebiten.Image, img *ebiten.Image, x, y int) {
 	screen.DrawImage(img, op)
 }
 
+// boardMessage identifies which end-of-game message, if any, Draw shows
+// over the board.
+type boardMessage int
+
+const (
+	boardMessageNone boardMessage = iota
+	boardMessageWon
+	boardMessageStuck
+)
+
+// boardMessage decides which end-of-game message Draw shows. It's kept
+// separate from Draw so the decision can be tested without reading back
+// pixels, which Ebitengine only allows once the game loop is running.
+func (s *SolitaireScene) boardMessage() boardMessage {
+	switch {
+	case s.board.Won():
+		return boardMessageWon
+	case s.mediator.Stuck():
+		return boardMessageStuck
+	default:
+		return boardMessageNone
+	}
+}
+
 // drawCenteredText draws str in white, horizontally centered on the
 // window (at winMessageX), with its top at y.
 func drawCenteredText(screen *ebiten.Image, str string, face text.Face, y float64) {
@@ -560,9 +584,10 @@ func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	if s.board.Won() {
+	switch s.boardMessage() {
+	case boardMessageWon:
 		drawCenteredText(screen, winMessageText, s.fontFace, winMessageY)
-	} else if s.mediator.Stuck() {
+	case boardMessageStuck:
 		vector.FillRect(screen, 0, stuckBandY, windowWidth, stuckBandHeight, stuckBandColor, false)
 		drawCenteredText(screen, stuckMessageText, s.fontFace, stuckMessageY)
 		drawCenteredText(screen, stuckHintText, s.labelFontFace, stuckHintY)
