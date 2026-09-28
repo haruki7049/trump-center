@@ -45,41 +45,22 @@ const (
 	tableauColumnHeight = 2000
 )
 
-// dragSource identifies where a card being dragged came from.
-type dragSource int
-
-const (
-	dragSourceNone dragSource = iota
-	dragSourceWaste
-	dragSourceTableau
-)
-
-// drag tracks the card currently being dragged by the player, if any.
-type drag struct {
-	active       bool
-	source       dragSource
-	tableauIndex int
-	card         card.Card
-	offsetX      int
-	offsetY      int
-	cursorX      int
-	cursorY      int
-}
-
 // SolitaireScene draws the stock, waste, foundation, and tableau piles of
 // a freshly dealt board, and lets the player draw from the stock and
-// drag cards between piles.
+// drag cards between piles. All decision-making for those interactions
+// lives in its Mediator; SolitaireScene itself only polls input,
+// dispatches events, and draws.
 type SolitaireScene struct {
 	board  *solitaire.Board
 	images map[string]*ebiten.Image
 	back   *ebiten.Image
-	drag   drag
 
 	root           *RootComponent
 	stockPile      *PileComponent
 	wastePile      *PileComponent
 	foundationPile *PileComponent
 	tableauPiles   [solitaire.TableauPileCount]*PileComponent
+	mediator       *Mediator
 }
 
 // NewSolitaireScene deals a new, shuffled board and preloads the card
@@ -139,6 +120,8 @@ func NewSolitaireScene() (*SolitaireScene, error) {
 	}
 	s.root = NewRootComponent(children...)
 
+	s.mediator = NewMediator(s.board, s.root, s.stockPile, s.wastePile, s.foundationPile, s.tableauPiles)
+
 	return &s, nil
 }
 
@@ -173,106 +156,26 @@ func loadImage(path string) (*ebiten.Image, error) {
 	return ebiten.NewImageFromImage(src), nil
 }
 
-func (s *SolitaireScene) startDrag(source dragSource, tableauIndex int, c card.Card, cursorX, cursorY, originX, originY int) {
-	s.drag = drag{
-		active:       true,
-		source:       source,
-		tableauIndex: tableauIndex,
-		card:         c,
-		offsetX:      cursorX - originX,
-		offsetY:      cursorY - originY,
-		cursorX:      cursorX,
-		cursorY:      cursorY,
-	}
-}
-
-// dropDrag attempts to move the dragged card onto whatever component is
-// under (x, y), doing nothing if the drop location or move is invalid.
-func (s *SolitaireScene) dropDrag(x, y int) {
-	switch hit := s.root.HitTest(x, y); hit {
-	case Component(s.foundationPile):
-		switch s.drag.source {
-		case dragSourceWaste:
-			s.board.MoveWasteToFoundation()
-		case dragSourceTableau:
-			s.board.MoveTableauToFoundation(s.drag.tableauIndex)
-		}
-	default:
-		for i, p := range s.tableauPiles {
-			if hit != Component(p) {
-				continue
-			}
-
-			switch s.drag.source {
-			case dragSourceWaste:
-				s.board.MoveWasteToTableau(i)
-			case dragSourceTableau:
-				if i != s.drag.tableauIndex {
-					s.board.MoveTableauToTableau(s.drag.tableauIndex, i)
-				}
-			}
-			return
-		}
-	}
-}
-
+// Update polls input and dispatches it as Events, which bubble up to the
+// Mediator (installed on s.root) via Chain of Responsibility; the
+// Mediator owns all decisions about what those events mean.
 func (s *SolitaireScene) Update() (scene.Scene, error) {
 	// Keep the (Passive View) component tree's TopBounds current before
-	// hit-testing against it below.
+	// the Mediator hit-tests against it while handling the events below.
 	s.syncComponents()
 
-	if !s.drag.active {
-		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			x, y := ebiten.CursorPosition()
-			s.tryStartDrag(x, y)
-		}
-		return nil, nil
-	}
-
 	x, y := ebiten.CursorPosition()
-	s.drag.cursorX, s.drag.cursorY = x, y
 
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		if hit := s.root.HitTest(x, y); hit != nil {
+			Dispatch(hit, Event{Type: EventPointerDown, X: x, Y: y})
+		}
+	}
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		s.dropDrag(x, y)
-		s.drag = drag{}
+		Dispatch(s.root, Event{Type: EventPointerUp, X: x, Y: y})
 	}
 
 	return nil, nil
-}
-
-// tryStartDrag handles a fresh left-click at (x, y): drawing from the
-// stock, or picking up the top card of the waste or a tableau pile.
-func (s *SolitaireScene) tryStartDrag(x, y int) {
-	pt := image.Pt(x, y)
-
-	if pt.In(s.stockPile.Bounds()) {
-		s.board.DrawFromStock()
-		return
-	}
-
-	if c, ok := s.board.WasteTop(); ok {
-		if b, ok := s.wastePile.TopBounds(); ok && pt.In(b) {
-			s.startDrag(dragSourceWaste, -1, c, x, y, b.Min.X, b.Min.Y)
-			return
-		}
-	}
-
-	for i, pile := range s.board.Tableau {
-		if pile.FaceUp == 0 {
-			continue
-		}
-
-		c, ok := pile.Top()
-		if !ok {
-			continue
-		}
-
-		b, ok := s.tableauPiles[i].TopBounds()
-		if ok && pt.In(b) {
-			s.startDrag(dragSourceTableau, i, c, x, y, b.Min.X, b.Min.Y)
-			return
-		}
-	}
 }
 
 // drawCard renders a single card image at (x, y) in board coordinates,
@@ -314,8 +217,10 @@ func (s *SolitaireScene) syncComponents() {
 	}
 	s.foundationPile.SetCards(foundationCards)
 
+	dragState, dragging := s.mediator.Dragging()
+
 	var wasteCards []CardDraw
-	draggingWaste := s.drag.active && s.drag.source == dragSourceWaste
+	draggingWaste := dragging && dragState.Source == dragSourceWaste
 	if top, ok := s.board.WasteTop(); ok && !draggingWaste {
 		img, _ := s.cardImage(top)
 		wasteCards = []CardDraw{{Image: img, X: wasteOriginX, Y: wasteOriginY}}
@@ -325,7 +230,7 @@ func (s *SolitaireScene) syncComponents() {
 	for pileIndex, pile := range s.board.Tableau {
 		x := tableauOriginX + pileIndex*tableauGapX
 		faceDownCount := len(pile.Cards) - pile.FaceUp
-		draggingHere := s.drag.active && s.drag.source == dragSourceTableau && s.drag.tableauIndex == pileIndex
+		draggingHere := dragging && dragState.Source == dragSourceTableau && dragState.TableauIndex == pileIndex
 
 		var cards []CardDraw
 		for i, c := range pile.Cards {
@@ -347,8 +252,9 @@ func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 	s.syncComponents()
 	s.root.Draw(screen)
 
-	if s.drag.active {
-		img, _ := s.cardImage(s.drag.card)
-		drawCard(screen, img, s.drag.cursorX-s.drag.offsetX, s.drag.cursorY-s.drag.offsetY)
+	if dragState, ok := s.mediator.Dragging(); ok {
+		img, _ := s.cardImage(dragState.Card)
+		x, y := ebiten.CursorPosition()
+		drawCard(screen, img, x-dragState.OffsetX, y-dragState.OffsetY)
 	}
 }
