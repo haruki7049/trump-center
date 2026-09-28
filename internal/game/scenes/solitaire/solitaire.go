@@ -36,6 +36,12 @@ const (
 	stockOriginY = 60
 	wasteOriginX = stockOriginX + cardWidth + 16
 	wasteOriginY = stockOriginY
+	// wasteFanCount/wasteFanOffsetX fan the most recent waste cards out
+	// horizontally instead of showing only a single flat card, so the
+	// player can see a little of their recent draw history. Only the
+	// rightmost (most recent) card is ever pickable.
+	wasteFanCount   = 3
+	wasteFanOffsetX = 16
 
 	foundationOriginX = wasteOriginX + cardWidth + 48
 	foundationOriginY = stockOriginY
@@ -159,7 +165,8 @@ func (s *SolitaireScene) deal() error {
 		stockOriginX, stockOriginY, stockOriginX+cardWidth, stockOriginY+cardHeight,
 	))
 	s.wastePile = NewPileComponent(image.Rect(
-		wasteOriginX, wasteOriginY, wasteOriginX+cardWidth, wasteOriginY+cardHeight,
+		wasteOriginX, wasteOriginY,
+		wasteOriginX+cardWidth+(wasteFanCount-1)*wasteFanOffsetX, wasteOriginY+cardHeight,
 	))
 	s.foundationPile = NewPileComponent(image.Rect(
 		foundationOriginX, foundationOriginY,
@@ -356,11 +363,23 @@ func (s *SolitaireScene) syncComponents() {
 
 	dragState, dragging := s.mediator.Dragging()
 
-	var wasteCards []CardDraw
+	// Fan out the last wasteFanCount cards, oldest to the left, so the
+	// player sees a little of their recent draw history; only the
+	// rightmost (last) one is ever pickable (see Mediator). While it's
+	// being dragged, drop it from the fan so the card(s) behind it show
+	// through, the same way the tableau reveals cards behind a dragged run.
+	waste := s.board.Waste
 	draggingWaste := dragging && dragState.Source == dragSourceWaste
-	if top, ok := s.board.WasteTop(); ok && !draggingWaste {
-		img, _ := s.cardImage(top)
-		wasteCards = []CardDraw{{Image: img, X: wasteOriginX, Y: wasteOriginY}}
+	if draggingWaste && len(waste) > 0 {
+		waste = waste[:len(waste)-1]
+	}
+	shown := min(len(waste), wasteFanCount)
+	waste = waste[len(waste)-shown:]
+
+	var wasteCards []CardDraw
+	for i, c := range waste {
+		img, _ := s.cardImage(c)
+		wasteCards = append(wasteCards, CardDraw{Image: img, X: wasteOriginX + i*wasteFanOffsetX, Y: wasteOriginY})
 	}
 	s.wastePile.SetCards(wasteCards)
 
