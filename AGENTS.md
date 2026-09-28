@@ -15,9 +15,11 @@ ______________________________________________________________________
 - **Target Language Version**: Go `1.26.x` (`go` directive in `go.mod`), provided by `pkgs.go` in `flake.nix`.
 - **Nix Packaging**: The package is built with `gomod2nix` (`pkgs.buildGoApplication`). `gomod2nix.toml` holds the module hashes and **must** be regenerated whenever `go.mod` / `go.sum` change.
 - **Directory Structure**:
+  - `ARCHITECTURE.md`: Explains how the codebase is put together — the title scene's use of `ebitenui` vs. the solitaire board's custom Composite/Passive View/Chain-of-Responsibility/Mediator architecture, and why. Read this before making structural changes to `internal/game/scenes/solitaire`.
   - `cmd/trump-center/`: Executable entry point (`main` calls `game.Run()`).
   - `internal/game/`: Root `ebiten.Game` implementation (`Game`, `Run()`, `NewGame()`) and window constants (`constants.go`). `Game` owns the active scene and delegates `Update`/`Draw` to it.
-  - `internal/game/scenes/<name>/`: Concrete scenes (currently `title`).
+  - `internal/game/scenes/<name>/`: Concrete scenes (`title`, `solitaire`).
+  - `internal/solitaire/`: Klondike solitaire's board layout and move rules, independent of any UI (see `ARCHITECTURE.md`).
   - `internal/scene/`: The `Scene` interface. `Update()` returns the next `Scene`, or `nil` to stay on the current one.
   - `assets/`: Embedded game assets (`assets.go`): card images under `assets/cards/` and the DotGothic16 font (OFL) under `assets/fonts/`.
   - `scripts/*.nu`: Nushell scripts invoked by the `Makefile` (`build`, `clean`, `test`, `fmt`, `lint`, `update`). They are written in Nushell for cross-platform (including Windows) support.
