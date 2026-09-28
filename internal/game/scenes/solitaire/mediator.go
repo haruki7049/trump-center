@@ -28,23 +28,29 @@ const (
 )
 
 // dragInfo records what's being dragged, from where, and the offset from
-// the cursor to the card's origin at the moment the drag started.
+// the cursor to its origin at the moment the drag started. cards holds
+// every card being dragged as a unit, bottom of the run first; for a
+// waste drag this is always a single card, but a tableau drag may carry a
+// whole face-up run (see cardIndex, the run's position in its source
+// pile, needed to apply the move on drop).
 type dragInfo struct {
 	source       dragSource
 	tableauIndex int
-	card         card.Card
+	cardIndex    int
+	cards        []card.Card
 	offsetX      int
 	offsetY      int
 }
 
 // DragState is a snapshot of an in-progress drag, returned by
-// Mediator.Dragging so SolitaireScene can render the floating card and
-// skip drawing it at its source pile, without needing to know any of the
-// Mediator's decision-making.
+// Mediator.Dragging so SolitaireScene can render the floating card(s) and
+// skip drawing them at their source pile, without needing to know any of
+// the Mediator's decision-making.
 type DragState struct {
 	Source       dragSource
 	TableauIndex int
-	Card         card.Card
+	CardIndex    int
+	Cards        []card.Card
 	OffsetX      int
 	OffsetY      int
 }
@@ -108,16 +114,17 @@ func (m *Mediator) Dragging() (DragState, bool) {
 	return DragState{
 		Source:       m.drag.source,
 		TableauIndex: m.drag.tableauIndex,
-		Card:         m.drag.card,
+		CardIndex:    m.drag.cardIndex,
+		Cards:        m.drag.cards,
 		OffsetX:      m.drag.offsetX,
 		OffsetY:      m.drag.offsetY,
 	}, true
 }
 
 // handlePointerDown draws from the stock, or picks up the top card of the
-// waste or a tableau pile, if the pointer is over one of them. It does
-// nothing while already dragging, or if the pointer isn't over anything
-// pickable.
+// waste, or a face-up tableau card and every card above it as a run, if
+// the pointer is over one of them. It does nothing while already
+// dragging, or if the pointer isn't over anything pickable.
 func (m *Mediator) handlePointerDown(x, y int) {
 	if m.state == MediatorDragging {
 		return
@@ -132,35 +139,37 @@ func (m *Mediator) handlePointerDown(x, y int) {
 
 	if c, ok := m.board.WasteTop(); ok {
 		if b, ok := m.wastePile.TopBounds(); ok && pt.In(b) {
-			m.startDrag(dragSourceWaste, -1, c, x, y, b.Min.X, b.Min.Y)
+			m.startDrag(dragSourceWaste, -1, -1, []card.Card{c}, x, y, b.Min.X, b.Min.Y)
 			return
 		}
 	}
 
 	for i, pile := range m.board.Tableau {
-		if pile.FaceUp == 0 {
-			continue
-		}
+		faceDownCount := len(pile.Cards) - pile.FaceUp
 
-		c, ok := pile.Top()
-		if !ok {
-			continue
-		}
+		// Search from the top of the stack down to the first face-up
+		// card: each card's bounds are full card-sized, so the
+		// highest-index match is the one actually visible at (x, y).
+		for cardIndex := len(pile.Cards) - 1; cardIndex >= faceDownCount; cardIndex-- {
+			b, ok := m.tableauPiles[i].CardBoundsAt(cardIndex)
+			if !ok || !pt.In(b) {
+				continue
+			}
 
-		b, ok := m.tableauPiles[i].TopBounds()
-		if ok && pt.In(b) {
-			m.startDrag(dragSourceTableau, i, c, x, y, b.Min.X, b.Min.Y)
+			run := append([]card.Card(nil), pile.Cards[cardIndex:]...)
+			m.startDrag(dragSourceTableau, i, cardIndex, run, x, y, b.Min.X, b.Min.Y)
 			return
 		}
 	}
 }
 
-func (m *Mediator) startDrag(source dragSource, tableauIndex int, c card.Card, cursorX, cursorY, originX, originY int) {
+func (m *Mediator) startDrag(source dragSource, tableauIndex, cardIndex int, cards []card.Card, cursorX, cursorY, originX, originY int) {
 	m.state = MediatorDragging
 	m.drag = dragInfo{
 		source:       source,
 		tableauIndex: tableauIndex,
-		card:         c,
+		cardIndex:    cardIndex,
+		cards:        cards,
 		offsetX:      cursorX - originX,
 		offsetY:      cursorY - originY,
 	}
@@ -185,7 +194,12 @@ func (m *Mediator) handlePointerUp(x, y int) {
 		case dragSourceWaste:
 			m.board.MoveWasteToFoundation()
 		case dragSourceTableau:
-			m.board.MoveTableauToFoundation(m.drag.tableauIndex)
+			// Only a single card can go to the foundation; dropping a
+			// multi-card run there is invalid and silently does nothing,
+			// matching standard Klondike rules.
+			if len(m.drag.cards) == 1 {
+				m.board.MoveTableauToFoundation(m.drag.tableauIndex)
+			}
 		}
 	default:
 		for i, p := range m.tableauPiles {
@@ -198,7 +212,7 @@ func (m *Mediator) handlePointerUp(x, y int) {
 				m.board.MoveWasteToTableau(i)
 			case dragSourceTableau:
 				if i != m.drag.tableauIndex {
-					m.board.MoveTableauToTableau(m.drag.tableauIndex, i)
+					m.board.MoveTableauToTableauRun(m.drag.tableauIndex, m.drag.cardIndex, i)
 				}
 			}
 			return

@@ -1,6 +1,7 @@
 package solitaire
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -59,7 +60,8 @@ func TestMediator_Handle_PointerDown_PicksUpWasteTop(t *testing.T) {
 	if !ok {
 		t.Fatal("expected clicking the waste top to start a drag")
 	}
-	if got.Source != dragSourceWaste || got.Card != (card.Card{Suit: card.Heart, Rank: card.King}) {
+	want := []card.Card{{Suit: card.Heart, Rank: card.King}}
+	if got.Source != dragSourceWaste || !slices.Equal(got.Cards, want) {
 		t.Errorf("Dragging() = %+v; want the King of Hearts from the waste", got)
 	}
 }
@@ -85,6 +87,44 @@ func TestMediator_Handle_PointerDown_PicksUpTableauTop(t *testing.T) {
 	}
 	if got.Source != dragSourceTableau || got.TableauIndex != 0 {
 		t.Errorf("Dragging() = %+v; want source=tableau, tableauIndex=0", got)
+	}
+}
+
+// TestMediator_Handle_PointerDown_PicksUpMiddleOfRun verifies that
+// clicking a face-up card that isn't the pile's top picks up that card
+// and every card above it as a run, not just the single top card.
+func TestMediator_Handle_PointerDown_PicksUpMiddleOfRun(t *testing.T) {
+	s := newTestScene(t)
+	s.setBoard(&solitaire.Board{})
+	run := []card.Card{
+		{Suit: card.Club, Rank: card.Queen},
+		{Suit: card.Heart, Rank: card.Jack},
+		{Suit: card.Club, Rank: card.Ten},
+	}
+	s.board.Tableau[0] = solitaire.Pile{
+		Cards:  append([]card.Card{{Suit: card.Diamond, Rank: card.King}}, run...),
+		FaceUp: 3,
+	}
+	s.syncComponents()
+
+	// Click the Jack (index 2 in the pile, the middle of the run), not
+	// the top (the Ten, index 3).
+	b, ok := s.tableauPiles[0].CardBoundsAt(2)
+	if !ok {
+		t.Fatal("expected the Jack to have bounds")
+	}
+	s.mediator.Handle(Event{Type: EventPointerDown, X: b.Min.X, Y: b.Min.Y})
+
+	got, ok := s.mediator.Dragging()
+	if !ok {
+		t.Fatal("expected clicking the Jack to start a drag")
+	}
+	want := []card.Card{
+		{Suit: card.Heart, Rank: card.Jack},
+		{Suit: card.Club, Rank: card.Ten},
+	}
+	if got.Source != dragSourceTableau || got.TableauIndex != 0 || got.CardIndex != 2 || !slices.Equal(got.Cards, want) {
+		t.Errorf("Dragging() = %+v; want source=tableau, tableauIndex=0, cardIndex=2, cards=%+v", got, want)
 	}
 }
 
@@ -151,7 +191,9 @@ func TestMediator_Handle_PointerDown_WhileAlreadyDragging_NoOp(t *testing.T) {
 	if !ok {
 		t.Fatal("expected the drag to still be active")
 	}
-	if after != before {
+	if after.Source != before.Source || after.TableauIndex != before.TableauIndex ||
+		after.CardIndex != before.CardIndex || after.OffsetX != before.OffsetX ||
+		after.OffsetY != before.OffsetY || !slices.Equal(after.Cards, before.Cards) {
 		t.Errorf("expected the in-progress drag to be unaffected, got %+v; want %+v", after, before)
 	}
 }
@@ -270,6 +312,67 @@ func TestMediator_Handle_DragAndDrop(t *testing.T) {
 			},
 		},
 		{
+			name: "tableau run to tableau",
+			board: &solitaire.Board{
+				Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+					0: {Cards: []card.Card{
+						{Suit: card.Spade, Rank: card.Nine}, // face-down
+						{Suit: card.Heart, Rank: card.Eight},
+						{Suit: card.Club, Rank: card.Seven},
+					}, FaceUp: 2},
+					1: {Cards: []card.Card{{Suit: card.Club, Rank: card.Nine}}, FaceUp: 1},
+				},
+			},
+			downAt: func(s *SolitaireScene) (int, int) {
+				// Index 1 is the Eight of Hearts, the bottom of the
+				// dragged run (Eight of Hearts, Seven of Clubs) — not the
+				// pile's top card (index 2).
+				b, _ := s.tableauPiles[0].CardBoundsAt(1)
+				return b.Min.X, b.Min.Y
+			},
+			upAt: func(s *SolitaireScene) (int, int) {
+				b, _ := s.tableauPiles[1].TopBounds()
+				return b.Min.X, b.Min.Y
+			},
+			wantBoard: func(t *testing.T, b *solitaire.Board) {
+				t.Helper()
+				if got := b.Tableau[0]; len(got.Cards) != 1 || got.FaceUp != 1 {
+					t.Errorf("source pile = %+v; want 1 card, FaceUp=1 (the Nine flipped face-up)", got)
+				}
+				if got := b.Tableau[1]; len(got.Cards) != 3 {
+					t.Errorf("expected the Eight-Seven run to move onto the Nine of Clubs, got %d cards", len(got.Cards))
+				}
+			},
+		},
+		{
+			name: "dropping a multi-card run onto the foundation does nothing",
+			board: &solitaire.Board{
+				Tableau: [solitaire.TableauPileCount]solitaire.Pile{
+					0: {Cards: []card.Card{
+						{Suit: card.Club, Rank: card.Ace},
+						{Suit: card.Heart, Rank: card.King}, // not really a legal run, but
+					}, FaceUp: 2}, // Mediator shouldn't even need it to be legal to reject this drop.
+				},
+			},
+			downAt: func(s *SolitaireScene) (int, int) {
+				b, _ := s.tableauPiles[0].CardBoundsAt(0)
+				return b.Min.X, b.Min.Y
+			},
+			upAt: func(s *SolitaireScene) (int, int) {
+				b := s.foundationPile.Bounds()
+				return b.Min.X, b.Min.Y
+			},
+			wantBoard: func(t *testing.T, b *solitaire.Board) {
+				t.Helper()
+				if len(b.Tableau[0].Cards) != 2 {
+					t.Errorf("expected the multi-card run to not move to the foundation, got %d cards left", len(b.Tableau[0].Cards))
+				}
+				if len(b.Foundation[card.Club]) != 0 {
+					t.Errorf("expected nothing to land on the foundation, got %d cards", len(b.Foundation[card.Club]))
+				}
+			},
+		},
+		{
 			name: "dropping onto the same tableau pile does nothing",
 			board: &solitaire.Board{
 				Tableau: [solitaire.TableauPileCount]solitaire.Pile{
@@ -363,20 +466,32 @@ func TestMediator_WiredAsRootEventHandler(t *testing.T) {
 	}
 }
 
+// TestSolitaireScene_Draw_WithActiveDrag exercises Draw with a
+// multi-card run being dragged, so it renders more than one floating
+// card.
 func TestSolitaireScene_Draw_WithActiveDrag(t *testing.T) {
 	s := newTestScene(t)
-	s.setBoard(&solitaire.Board{
-		Waste: []card.Card{{Suit: card.Spade, Rank: card.Ace}},
-	})
+	s.setBoard(&solitaire.Board{})
+	s.board.Tableau[0] = solitaire.Pile{
+		Cards: []card.Card{
+			{Suit: card.Heart, Rank: card.Eight},
+			{Suit: card.Club, Rank: card.Seven},
+		},
+		FaceUp: 2,
+	}
 	s.syncComponents()
 
-	pt, ok := s.wastePile.TopBounds()
+	b, ok := s.tableauPiles[0].CardBoundsAt(0)
 	if !ok {
-		t.Fatal("expected the waste to have a top card")
+		t.Fatal("expected tableau pile 0 to have a card at index 0")
 	}
-	s.mediator.Handle(Event{Type: EventPointerDown, X: pt.Min.X, Y: pt.Min.Y})
-	if _, ok := s.mediator.Dragging(); !ok {
+	s.mediator.Handle(Event{Type: EventPointerDown, X: b.Min.X, Y: b.Min.Y})
+	dragState, ok := s.mediator.Dragging()
+	if !ok {
 		t.Fatal("expected a drag to be active")
+	}
+	if len(dragState.Cards) != 2 {
+		t.Fatalf("expected the whole 2-card run to be dragged, got %d cards", len(dragState.Cards))
 	}
 
 	screen := ebiten.NewImage(1280, 720)

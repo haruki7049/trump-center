@@ -161,12 +161,23 @@ func (p *PileComponent) Bounds() image.Rectangle {
 // TopBounds returns the screen area of the last (topmost) card currently
 // drawn by this pile, if any.
 func (p *PileComponent) TopBounds() (image.Rectangle, bool) {
-	if len(p.cards) == 0 {
+	return p.CardBoundsAt(len(p.cards) - 1)
+}
+
+// CardBoundsAt returns the screen area of the card at index i in this
+// pile's current cards, if any. Every card's bounds are a full card-sized
+// rectangle even in a fanned stack where later cards visually cover
+// earlier ones' lower portion, so a search from the highest index down
+// (see Mediator) reproduces standard hit-testing: the first (i.e. most
+// recently drawn, so topmost) match is the card actually visible at that
+// point.
+func (p *PileComponent) CardBoundsAt(i int) (image.Rectangle, bool) {
+	if i < 0 || i >= len(p.cards) {
 		return image.Rectangle{}, false
 	}
 
-	top := p.cards[len(p.cards)-1]
-	return image.Rect(top.X, top.Y, top.X+cardWidth, top.Y+cardHeight), true
+	c := p.cards[i]
+	return image.Rect(c.X, c.Y, c.X+cardWidth, c.Y+cardHeight), true
 }
 
 func (p *PileComponent) Draw(screen *ebiten.Image) {
