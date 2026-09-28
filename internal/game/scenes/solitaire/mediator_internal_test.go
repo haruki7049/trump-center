@@ -466,6 +466,32 @@ func TestMediator_WiredAsRootEventHandler(t *testing.T) {
 	}
 }
 
+// TestSolitaireScene_Draw_WhenWon exercises Draw once Board.Won is true,
+// so it also renders the win message.
+func TestSolitaireScene_Draw_WhenWon(t *testing.T) {
+	s := newTestScene(t)
+	won := &solitaire.Board{}
+	for _, suit := range []card.Suit{card.Spade, card.Heart, card.Diamond, card.Club} {
+		for rank := card.Ace; rank <= card.King; rank++ {
+			won.Foundation[suit] = append(won.Foundation[suit], card.Card{Suit: suit, Rank: rank})
+		}
+	}
+	s.setBoard(won)
+	if !s.board.Won() {
+		t.Fatal("expected the constructed board to be won")
+	}
+
+	screen := ebiten.NewImage(1280, 720)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Draw panicked: %v", r)
+		}
+	}()
+
+	s.Draw(screen)
+}
+
 // TestSolitaireScene_Draw_WithActiveDrag exercises Draw with a
 // multi-card run being dragged, so it renders more than one floating
 // card.

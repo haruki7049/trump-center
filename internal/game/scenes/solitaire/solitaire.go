@@ -6,12 +6,14 @@ package solitaire
 
 import (
 	"image"
+	"image/color"
 	_ "image/png"
 	"math/rand"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/haruki7049/trump-center/assets"
 	"github.com/haruki7049/trump-center/internal/card"
 	"github.com/haruki7049/trump-center/internal/scene"
@@ -43,6 +45,14 @@ const (
 	// tableauColumnHeight is an arbitrarily generous height used only to
 	// detect drops anywhere below a tableau pile's origin.
 	tableauColumnHeight = 2000
+
+	// winMessageText is shown once Board.Won reports the game complete.
+	// winMessageX/Y are hardcoded rather than centered on the window size
+	// (internal/game.WINDOW_WIDTH/HEIGHT) to avoid an import cycle
+	// (internal/game -> title -> solitaire).
+	winMessageText = "You win!"
+	winMessageX    = 640
+	winMessageY    = 300
 )
 
 // SolitaireScene draws the stock, waste, foundation, and tableau piles of
@@ -51,9 +61,10 @@ const (
 // lives in its Mediator; SolitaireScene itself only polls input,
 // dispatches events, and draws.
 type SolitaireScene struct {
-	board  *solitaire.Board
-	images map[string]*ebiten.Image
-	back   *ebiten.Image
+	board    *solitaire.Board
+	images   map[string]*ebiten.Image
+	back     *ebiten.Image
+	fontFace text.Face
 
 	root           *RootComponent
 	stockPile      *PileComponent
@@ -83,6 +94,12 @@ func NewSolitaireScene() (*SolitaireScene, error) {
 		return nil, err
 	}
 	s.back = back
+
+	fontFace, err := loadFont("fonts/DotGothic16/DotGothic16-Regular.ttf")
+	if err != nil {
+		return nil, err
+	}
+	s.fontFace = fontFace
 
 	for _, pile := range board.Tableau {
 		for _, c := range pile.Cards {
@@ -154,6 +171,21 @@ func loadImage(path string) (*ebiten.Image, error) {
 	}
 
 	return ebiten.NewImageFromImage(src), nil
+}
+
+func loadFont(path string) (*text.GoTextFace, error) {
+	f, err := assets.Assets.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	src, err := text.NewGoTextFaceSource(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return &text.GoTextFace{Source: src, Size: 48}, nil
 }
 
 // Update polls input and dispatches it as Events, which bubble up to the
@@ -259,5 +291,13 @@ func (s *SolitaireScene) Draw(screen *ebiten.Image) {
 			img, _ := s.cardImage(c)
 			drawCard(screen, img, baseX, baseY+i*faceUpOffsetY)
 		}
+	}
+
+	if s.board.Won() {
+		op := &text.DrawOptions{}
+		op.GeoM.Translate(winMessageX, winMessageY)
+		op.PrimaryAlign = text.AlignCenter
+		op.ColorScale.ScaleWithColor(color.White)
+		text.Draw(screen, winMessageText, s.fontFace, op)
 	}
 }
