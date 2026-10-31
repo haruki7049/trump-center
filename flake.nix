@@ -53,7 +53,7 @@
             pkgs.libGL
           ];
           nativeBuildInputs = [
-            pkgs.go # Golang
+            pkgs.go_1_27 # Golang
             pkgs.pkg-config # pkg-config
             pkgs.nil # Nix LSP
             pkgs.gopls # Golang LSP
