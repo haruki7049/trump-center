@@ -2,16 +2,16 @@ schema = 3
 
 [mod]
   [mod.'github.com/ebitengine/gomobile']
-    version = 'v0.0.0-20250923094054-ea854a63cce1'
-    hash = 'sha256-T+RQTj5M2ICLW6t8X2gEQgBLMQChVUIFbpmQgd5HE/M='
+    version = 'v0.0.0-20260820040257-d11f821a26a6'
+    hash = 'sha256-DWNdgaWKOsCDWg1DBY+Z+AL6YumbCb2LKVZHNj92SX8='
 
   [mod.'github.com/ebitengine/hideconsole']
     version = 'v1.0.0'
     hash = 'sha256-YeOXzCqLsTJssPGMgp56Fe1YDRd7RIkyHywr7/5rBRs='
 
   [mod.'github.com/ebitengine/purego']
-    version = 'v0.9.0'
-    hash = 'sha256-jSlhGjhuYf15zHy7shSKR1rQN1sRyH5zXAzWqy+huHY='
+    version = 'v0.11.0'
+    hash = 'sha256-JjleZ8TbDFCUrV2whfa/utBtz/xnGiLx3LcC+VemN2U='
 
   [mod.'github.com/ebitenui/ebitenui']
     version = 'v0.7.3'
@@ -22,37 +22,33 @@ schema = 3
     hash = 'sha256-6nFSZTYbx1Qtd8NmUZ3pFjYtoxS02vqUXFL/BeCFs+w='
 
   [mod.'github.com/go-text/typesetting']
-    version = 'v0.3.0'
-    hash = 'sha256-dCjYWtlBDO2QHPBbGo5arbwkxMkYUYJddRU+6VARaeI='
+    version = 'v0.3.5'
+    hash = 'sha256-sftokwRceI8TBT2XWPHtYh1brxxG9l2SmV6wopXxGLM='
 
   [mod.'github.com/hajimehoshi/ebiten/v2']
-    version = 'v2.9.9'
-    hash = 'sha256-3cc5DzNE9hq561rVeS25FcV7cZJ/d33nkzwX5Cpc71U='
+    version = 'v2.10.5'
+    hash = 'sha256-gGCXFrI6jJ56JJ1adkjPjSdslZUsieXzjwMXmgQS5Bk='
 
-  [mod.'github.com/jezek/xgb']
-    version = 'v1.1.1'
-    hash = 'sha256-LjbHWx2dzeVUOf3+VYpMZk+mXkxjwRR+v0oH3ZfPEDY='
-
-  [mod.'github.com/rivo/uniseg']
-    version = 'v0.4.7'
-    hash = 'sha256-rDcdNYH6ZD8KouyyiZCUEy8JrjOQoAkxHBhugrfHjFo='
+  [mod.'github.com/srwiley/rasterx']
+    version = 'v0.0.0-20220730225603-2ab79fcdd4ef'
+    hash = 'sha256-/XmSE/J+f6FLWXGvljh6uBK71uoCAK3h82XQEQ1Ki68='
 
   [mod.'golang.org/x/exp']
     version = 'v0.0.0-20250305212735-054e65f0b394'
     hash = 'sha256-Vgt/CNx/xJYxiKKu0PI7ZSiL/SOfXI4di3Mcyge3aw4='
 
   [mod.'golang.org/x/image']
-    version = 'v0.31.0'
-    hash = 'sha256-ZFTlu9+4QToPPLA8C5UcG2eq/lQylq81RoG/WtYo9rg='
+    version = 'v0.45.0'
+    hash = 'sha256-oI6UVl+gAcEpXHFszh8P8WvOZ6Ob41982Op9/CBwyjs='
 
   [mod.'golang.org/x/sync']
-    version = 'v0.17.0'
-    hash = 'sha256-M85lz4hK3/fzmcUViAp/CowHSxnr3BHSO7pjHp1O6i0='
+    version = 'v0.22.0'
+    hash = 'sha256-VZjl0fAM0p/nI81zh+pdBjzxFupx0UcKYXBBpL2ZS7k='
 
   [mod.'golang.org/x/sys']
-    version = 'v0.36.0'
-    hash = 'sha256-9h4SHGnlJzmTENUp6226hC8fQ73QrQC3D85NNMxLuXg='
+    version = 'v0.47.0'
+    hash = 'sha256-TpbRyWWqHjddP6QzUgAbaLd2EE0S+GYNRUIDJd18r98='
 
   [mod.'golang.org/x/text']
-    version = 'v0.29.0'
-    hash = 'sha256-2cWBtJje+Yc+AnSgCANqBlIwnOMZEGkpQ2cFI45VfLI='
+    version = 'v0.41.0'
+    hash = 'sha256-22nHcolG87qSPahT2Ey8S5iGlCLAglE9ObYXO6XZ3ZY='
